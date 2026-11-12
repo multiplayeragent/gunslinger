@@ -4,3 +4,7 @@ node_modules/
 .env
 .env.*
 !.env.example
+# clean-game-repo: never commit the real key, agent notes or env files
+mp.config.local.js
+.notes/
+dist/
