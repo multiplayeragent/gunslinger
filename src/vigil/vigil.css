@@ -1,0 +1,105 @@
+/* Crystal Vigil: HUD additions, the armory, and the map and class pickers on the title. Uses the tokens in index.html. */
+.vg-hud { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .35s ease; color: var(--bone); text-shadow: var(--shadow); --cry: #7fd8ff; }
+.vg-hud.on { opacity: 1; }
+.vg-k { font: 600 11px/1 var(--f-label); letter-spacing: .26em; text-transform: uppercase; color: rgba(232, 228, 218, .72); }
+.vg-bar { height: 6px; background: rgba(11, 13, 15, .55); box-shadow: inset 0 0 0 1px var(--bone-faint); }
+.vg-bar i { display: block; height: 100%; width: 100%; background: var(--cry); transition: width .25s ease; }
+.vg-bar.thin { height: 4px; width: 120px; } .vg-bar.thin i { background: var(--steel); }
+
+.vg-crystal { position: absolute; left: 50%; top: calc(80px + var(--sat)); transform: translateX(-50%); display: flex; align-items: center; gap: 12px; }
+.vg-crystal .vg-bar { width: min(300px, 38vw); }
+.vg-crystal b { font: 500 13px/1 var(--f-mono); min-width: 4ch; color: var(--cry); }
+.vg-hud.crit .vg-bar i { background: var(--alarm); } .vg-hud.crit .vg-crystal b { color: var(--alarm); }
+.vg-hud.crit .vg-crystal .vg-k { color: var(--alarm); animation: blink .7s steps(2, jump-none) infinite; }
+.vg-hud.shield .vg-crystal .vg-bar { box-shadow: 0 0 0 1px var(--cry), 0 0 10px var(--cry); }
+
+.vg-cash { position: absolute; left: var(--gl); top: calc(108px + var(--sat)); padding-left: 14px; font: 700 30px/1 var(--f-display); letter-spacing: .04em; color: var(--signal); font-variant-numeric: tabular-nums; }
+.vg-left { position: absolute; left: var(--gl); bottom: calc(96px + var(--sab)); display: grid; gap: 9px; }
+.vg-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; max-width: 46vw; }
+.vg-row em { font: 400 11px/1 var(--f-mono); font-style: normal; color: var(--bone-dim); }
+.vg-armor { display: none; } .vg-armor.has { display: flex; }
+.vg-pip { width: 9px; height: 9px; background: var(--cry); transform: rotate(45deg); margin: 0 2px; box-shadow: 0 0 6px var(--cry); }
+.vg-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px 3px 5px; background: var(--plate); border-left: 2px solid var(--signal); font: 600 12px/1 var(--f-label); letter-spacing: .12em; text-transform: uppercase; }
+.vg-chip b { font: 500 11px/1 var(--f-mono); letter-spacing: 0; color: var(--bone); margin-left: 2px; text-transform: none; }
+.vg-chip.off { border-left-color: var(--bone-faint); color: var(--bone-dim); } .vg-chip.off b { color: var(--bone-dim); }
+.vg-chip.live { border-left-color: var(--cry); color: var(--cry); }
+.vg-kits { position: absolute; right: var(--gr); bottom: calc(150px + var(--sab)); display: grid; gap: 4px; justify-items: end; }
+.vg-kit { font: 500 11px/1 var(--f-label); letter-spacing: .16em; text-transform: uppercase; color: var(--bone-dim); }
+.vg-kit kbd { margin-right: 7px; } .vg-kit.on { color: var(--bone); } .vg-kit.on kbd { border-color: var(--signal); color: var(--signal); }
+.vg-toasts { position: absolute; right: var(--gr); top: calc(86px + var(--sat)); display: grid; gap: 5px; justify-items: end; max-width: min(360px, 44vw); }
+.vg-toast { padding: 6px 10px 5px; background: var(--plate); border-right: 2px solid var(--signal); font: 400 11px/1.35 var(--f-mono); letter-spacing: .04em; text-align: right; transition: opacity .5s; }
+.vg-toast.out { opacity: 0; }
+.vg-down { position: absolute; left: 50%; top: 36%; transform: translateX(-50%); padding: 9px 16px 8px; background: var(--plate); border-top: 1px solid var(--alarm); border-bottom: 1px solid var(--alarm); color: var(--alarm);
+  font: 700 clamp(15px, 2vw, 22px)/1.2 var(--f-display); letter-spacing: .18em; text-transform: uppercase; text-align: center; opacity: 0; transition: opacity .25s; max-width: 90vw; }
+.vg-down.on { opacity: 1; }
+.is-touch .vg-left, .is-touch .vg-kits { display: none; }
+@media (max-width: 760px) { .vg-cash { top: calc(150px + var(--sat)); font-size: 24px; } .vg-crystal { top: calc(66px + var(--sat)); } }
+
+/* ---- armory ---- */
+.vg-shop { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(6, 8, 10, .72); pointer-events: auto; z-index: 6; padding: calc(16px + var(--sat)) var(--gr) calc(16px + var(--sab)) var(--gl); }
+body.vg-shop-open .vg-shop { display: flex; }
+body.vg-shop-open .menu .m-screen, body.vg-shop-open .menu .m-veil { display: none !important; }
+.vg-panel { width: min(1060px, 100%); max-height: 100%; display: flex; flex-direction: column; background: var(--plate-solid); border: 1px solid var(--line); border-top: 3px solid var(--signal); color: var(--bone); }
+.vg-panel header { display: flex; align-items: center; gap: 18px; padding: 16px 22px 12px; border-bottom: 1px solid var(--line); }
+.vg-panel h2 { margin: 0; font: 900 34px/.9 var(--f-display); letter-spacing: .1em; text-transform: uppercase; }
+#vg-shopnote { flex: 1 1 auto; font: 400 11px/1.4 var(--f-mono); color: var(--steel); }
+#vg-shopcash { font: 700 30px/1 var(--f-display); color: var(--signal); letter-spacing: .04em; }
+#vg-tabs { display: flex; gap: 22px; padding: 0 22px; border-bottom: 1px solid var(--line); }
+#vg-tabs button { font: 600 14px/1 var(--f-label); letter-spacing: .22em; text-transform: uppercase; color: var(--steel); background: none; border: 0; border-bottom: 3px solid transparent; padding: 13px 0 11px; margin-bottom: -1px; cursor: pointer; }
+#vg-tabs button.on { color: var(--bone); border-bottom-color: var(--signal); } #vg-tabs button:hover { color: var(--bone); }
+#vg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 10px; padding: 16px 22px; overflow-y: auto; }
+.vg-card { display: grid; gap: 6px; align-content: start; text-align: left; padding: 12px 13px 11px; min-height: 132px; background: rgba(232, 228, 218, .04); border: 1px solid rgba(232, 228, 218, .28); border-radius: 0; color: var(--bone); cursor: pointer; font: inherit; }
+.vg-card:hover { border-color: var(--bone); background: rgba(232, 228, 218, .1); }
+.vg-card:focus-visible, #vg-tabs button:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.vg-card .cn { font: 600 16px/1.1 var(--f-label); letter-spacing: .1em; text-transform: uppercase; }
+.vg-card .cs { font: 400 10px/1.3 var(--f-mono); color: var(--signal); letter-spacing: .03em; min-height: 13px; }
+.vg-card .cd { font: 400 12px/1.4 var(--f-label); letter-spacing: .02em; color: var(--bone-dim); }
+.vg-card .cp { align-self: end; font: 700 20px/1 var(--f-display); letter-spacing: .06em; color: var(--signal); margin-top: 4px; }
+.vg-card.poor { opacity: .5; } .vg-card.poor .cp { color: var(--alarm); }
+.vg-card.done { border-color: rgba(232, 228, 218, .14); } .vg-card.done .cp { color: var(--steel); font-size: 14px; letter-spacing: .2em; }
+.vg-foot { margin: 0; padding: 10px 22px 14px; border-top: 1px solid var(--line); font: 400 11px/1.4 var(--f-mono); color: var(--steel); }
+
+/* ---- title: map, mode and class pickers ---- */
+.m-pick .seg button[disabled] { opacity: .45; cursor: default; }
+.gs-loading { position: absolute; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: var(--ink); color: var(--steel); font: 400 12px/1 var(--f-mono); letter-spacing: .18em; text-transform: uppercase; }
+body[data-map="vigil"] { --signal: #9fd8ff; --signal-hot: #c4e8ff; }
+body[data-map="vigil"] .vg-cash, body[data-map="vigil"] #vg-shopcash, body[data-map="vigil"] .vg-card .cp, body[data-map="vigil"] .vg-card .cs { color: #ffb347; }
+/* four picker rows need the room the harbor's two leave spare */
+body[data-map="vigil"] .m-word { font-size: clamp(44px, 9.6vw, 136px) !important; }
+body[data-map="vigil"] .m-note { display: none; }
+body[data-map="vigil"] .m-pick { max-width: 520px; }
+body[data-map="vigil"] .m-pick-note { min-height: 30px; }
+
+/* ---- playing together: the lobby on the title screen, the squad list and the connection banner in play ---- */
+.vg-lobby { grid-column: 1 / -1; display: grid; gap: 5px; padding: 6px 8px; border: 1px solid rgba(159, 216, 255, .22); background: rgba(11, 13, 15, .5); }
+.vg-lobby[hidden] { display: none; }
+.vg-lobby-row { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+.vg-name { width: 116px; min-height: 28px; padding: 0 8px; font: 500 12px/1 var(--f-mono); color: var(--bone); background: rgba(0, 0, 0, .35); border: 1px solid rgba(232, 228, 216, .25); outline: none; }
+.vg-name:focus { border-color: #9fd8ff; }
+.vg-code { font: 600 12px/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: #9fd8ff; margin-right: auto; }
+.vg-lobby button { min-height: 28px; padding: 0 10px; font: 600 10px/1 var(--f-label); letter-spacing: .16em; text-transform: uppercase; color: var(--bone-dim); background: transparent; border: 1px solid rgba(232, 228, 216, .25); cursor: pointer; }
+.vg-lobby button:hover { color: var(--bone); border-color: var(--bone); }
+.vg-roster { display: flex; flex-wrap: wrap; gap: 4px 12px; font: 400 11px/1.4 var(--f-mono); color: var(--steel); min-height: 15px; }
+.vg-roster span.in { color: #9fd8ff; }
+.vg-roster em { font-style: normal; opacity: .75; }
+.vg-top { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 2px 12px; font: 400 10px/1.5 var(--f-mono); color: var(--steel); }
+.vg-top:empty { display: none; }
+.vg-top b { font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--bone-dim); }
+.vg-top .me { color: #9fd8ff; }
+.vg-squad { position: absolute; left: var(--gr); top: calc(176px + var(--sat)); display: grid; gap: 4px; min-width: 150px; pointer-events: none; color: var(--bone); text-shadow: var(--shadow); font: 500 11px/1 var(--f-mono); }
+.vg-squad[hidden] { display: none; }
+.vg-squad-h { font: 500 10px/1 var(--f-label); letter-spacing: .22em; color: var(--steel); margin-bottom: 2px; }
+.vg-mate { display: grid; grid-template-columns: 1fr 54px 34px; align-items: center; gap: 8px; }
+.vg-mate b { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vg-mate i { height: 4px; background: rgba(232, 228, 216, .18); }
+.vg-mate u { display: block; height: 100%; background: #9fd8ff; }
+.vg-mate em { font-style: normal; text-align: right; color: var(--steel); }
+.vg-mate.off { opacity: .55; }
+.vg-mate.off em { color: #ff8a6a; }
+.vg-netbanner { position: absolute; left: 50%; top: calc(64px + var(--sat)); transform: translateX(-50%); padding: 6px 12px; background: rgba(11, 13, 15, .8); border: 1px solid #ff8a6a; color: #ffb49a; font: 500 11px/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; pointer-events: none; }
+.vg-netbanner[hidden] { display: none; }
+/* a short window: the lobby takes the room the premise and the class note had */
+@media (max-height: 840px) {
+  body[data-map="vigil"] .m-premise, body[data-map="vigil"] .m-pick-note { display: none; }
+  body[data-map="vigil"] .m-pick { gap: 6px 14px; }
+}

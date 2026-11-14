@@ -2,6 +2,7 @@
 // Your real key goes in mp.config.local.js (gitignored), which index.html loads after this file:
 //   window.MP_CONFIG.key = 'pk_live_...';
 // Someone starting from this repo gets their own key from remix_game or create_game.
+// With the placeholder the game is single-player only: co-op, the leaderboard and the invite link stay off.
 window.MP_CONFIG = {
   key: 'pk_REPLACE_ME',
   endpoint: 'wss://live.multiplayeragent.com',

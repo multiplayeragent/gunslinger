@@ -366,7 +366,7 @@ kbd { display: inline-block; font: 500 10px/1 var(--f-mono); color: var(--bone);
   .h-cue.urgent { animation: none; }
 }
 
-</style><link rel="stylesheet" href="src/gunslinger.css">
+</style><link rel="stylesheet" href="src/gunslinger.css"><link rel="stylesheet" href="src/vigil/vigil.css">
 </head><body><div id="app">
   <canvas id="view" tabindex="0"></canvas>
   <div id="ui"></div>
@@ -377,5 +377,16 @@ kbd { display: inline-block; font: 500 10px/1 var(--f-mono); color: var(--bone);
   </div>
 </div>
 
-<script src="src/ballistics.js"></script><script src="src/visuals.js"></script><script src="src/gunslinger.js"></script><script src="vendor/gunslinger-engine.js"></script>
+<script src="mp.config.js"></script><script src="mp.config.local.js"></script>
+<script async src="https://cdn.multiplayeragent.com/sdk/mp.global.js"></script>
+<script src="src/vigil/map.js"></script><script src="src/vigil/kit.js"></script><script src="src/vigil/materials.js"></script>
+<script src="src/vigil/church.js"></script><script src="src/vigil/yard.js"></script><script src="src/vigil/forest.js"></script>
+<script src="src/vigil/ground.js"></script><script src="src/vigil/lighting.js"></script><script src="src/vigil/figure.js"></script>
+<script src="src/vigil/phys.js"></script>
+<script src="src/vigil/ragdoll.js"></script>
+<script src="src/vigil/destruct.js"></script>
+<script src="src/vigil/zombies.js"></script>
+<script src="src/vigil/audio.js"></script><script src="src/vigil/crystal.js"></script><script src="src/vigil/defenses.js"></script><script src="src/vigil/net.js"></script><script src="src/vigil/ui.js"></script><script src="src/vigil/director.js"></script><script src="src/vigil/level.js"></script>
+<script src="src/maps.js"></script>
+<script src="src/ballistics.js"></script><script src="src/visuals.js"></script><script src="src/menu.js"></script><script src="src/gunslinger.js"></script><script src="vendor/gunslinger-engine.js"></script>
 </body></html>

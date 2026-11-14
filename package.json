@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "description": "Gunslinger: a first-person browser combat game",
   "scripts": {
-    "start": "python3 -m http.server 8080 --bind 127.0.0.1",
+    "start": "node tools/serve.mjs",
     "test": "node --test tests/*.test.cjs",
-    "check": "node --check src/ballistics.js && node --check src/visuals.js && node --check src/gunslinger.js && node --check vendor/gunslinger-engine.js"
+    "check": "node tools/check.mjs"
   }
 }

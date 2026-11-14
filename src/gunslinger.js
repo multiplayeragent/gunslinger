@@ -11,7 +11,7 @@ window.Gunslinger = {
     window.addEventListener('keydown', e => {
       if (/INPUT|TEXTAREA/.test(e.target.tagName)) return;
       keys.add(e.code);
-      if (e.code === 'KeyV' && !e.repeat && g.game.state === 'playing' && p.enabled && p.alive && w.current === 'rifle') state.semi = !state.semi;
+      if (e.code === 'KeyV' && !e.repeat && !g.noFireSelect && g.game.state === 'playing' && p.enabled && p.alive && w.current === 'rifle') state.semi = !state.semi;
     });
     window.addEventListener('keyup', e => keys.delete(e.code));
     window.addEventListener('blur', () => keys.clear());
@@ -77,7 +77,8 @@ window.Gunslinger = {
       bullets.fire(origin,dir,{speed:620,damage:Math.max(16,(options.damage||6)*2),range:options.range||200,owner:'enemy'});
       return false;
     };
-    const applyTuning = () => Object.assign(p.tuning,{walk:3.15,sprint:5.5,crouch:1.45,ads:1.55,accelGround:15,decelGround:20,accelAir:2,regenDelay:1e9,regenRate:0,bobY:.017,bobX:.009,fovSprint:2,recoilKeep:.65});
+    // A map may scale movement (g.moveScale), drop the fire selector (g.noFireSelect) or replace dressings (g.noDressing).
+    const applyTuning = () => { const k=g.moveScale||1; return Object.assign(p.tuning,{walk:3.15*k,sprint:5.5*k,crouch:1.45*k,ads:1.55*k,accelGround:15,decelGround:20,accelAir:2,regenDelay:1e9,regenRate:0,bobY:.017,bobX:.009,fovSprint:2,recoilKeep:.65}); };
     applyTuning();
     g.events.on('game:state', ({state:next,prev}) => {
       keys.clear();
@@ -98,7 +99,7 @@ window.Gunslinger = {
       if(state.breath<.05) state.breathSpent=true;
       if(state.breath>.3) state.breathSpent=false;
       if(state.bandaging>0) {g.input.fire=false;g.input.sprint=false;g.input.ads=false;}
-      p.tuning.walk=3.15*(p.health<30?.72:1);
+      p.tuning.walk=3.15*(g.moveScale||1)*(p.health<30?.72:1);
       playerUpdate(dt);
       const steady = (keys.has('AltLeft')||keys.has('AltRight')) && p.ads>.8 && !state.breathSpent && !p.sprinting;
       state.breath=clamp(state.breath+dt*(steady?-.3:.18));
@@ -123,7 +124,7 @@ window.Gunslinger = {
         state.elapsed+=dt;
         state.stamina=clamp(state.stamina+dt*(p.sprinting?-.19:p.crouching?.16:.115));
         state.suppression=Math.max(0,state.suppression-dt*.45);
-        const dressing=keys.has('KeyB') && p.speed<.4 && state.bandages>0 && p.health<100 && g.time.t-hitTime>1;
+        const dressing=!g.noDressing && keys.has('KeyB') && p.speed<.4 && state.bandages>0 && p.health<100 && g.time.t-hitTime>1;
         state.bandaging=dressing?state.bandaging+dt:0;
         if(state.bandaging>=3) {p.heal(35);state.bandages--;state.bandaging=0;keys.delete('KeyB');}
         bullets.update(dt);
@@ -134,7 +135,7 @@ window.Gunslinger = {
         $('gs-ammo').textContent=`${w.ammo} / ${Number.isFinite(w.reserve)?w.reserve:'∞'}`;
         $('gs-mode').textContent=w.current==='pistol'?'SEMI':state.semi?'SEMI':'AUTO';
         $('gs-stance').textContent=p.crouching?'CROUCHED':p.sprinting?'SPRINTING':'STANDING';
-        $('gs-dressings').textContent=`${state.bandages} DRESSINGS`;
+        $('gs-dressings').textContent=g.gsDressLabel?g.gsDressLabel():`${state.bandages} DRESSINGS`;
         $('gs-action').textContent=state.bandaging>0?`APPLYING DRESSING  ${Math.min(100,state.bandaging/3*100).toFixed(0)}%`:state.suppression>.5?'UNDER FIRE — FIND COVER':state.stamina<.15?'EXHAUSTED — RECOVER':'';
       }
       suppression.style.opacity=active?state.suppression*.65:0;
@@ -142,6 +143,8 @@ window.Gunslinger = {
     };
     window.GunslingerVisuals?.install(g);
     this.brand();
+    window.GunslingerMenu?.install(g);
+    window.GunslingerMap?.install?.(g);
   },
   brand() {
     const set = (selector,text) => {const e=document.querySelector(selector);if(e)e.textContent=text;};

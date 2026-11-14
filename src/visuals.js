@@ -2,18 +2,23 @@
 window.GunslingerVisuals = {
   install(g) {
     const T=g.THREE;
-    // render.post is transient gameplay state; render.tune drives the optical passes.
-    Object.assign(g.render.tune || {}, {
-      grain:.008,ca:.00015,vignette:.14,lookSat:.94,lookPower:1.02,
-      bloom:.025,bloomMix:.3,dirt:.012,streak:.006,flare:.035,
-      sharpen:.18,volSigma:.0018,volFarHaze:.2,volInteriorDust:2.5,
-      aoIntensity:1.15,aoStrength:.8,key:.15,minExposure:.7,maxExposure:1.7
-    });
-    if(g.mats?.uniforms?.wet) g.mats.uniforms.wet.value=.6;
-    if(g.ground?.setRain) g.ground.setRain(.25);
+    // A map that brings its own level also brings its own look; the values below are the harbor's daylight.
+    const map=window.GunslingerMap;
+    if(map) { map.look?.(g); }
+    else {
+      // render.post is transient gameplay state; render.tune drives the optical passes.
+      Object.assign(g.render.tune || {}, {
+        grain:.008,ca:.00015,vignette:.14,lookSat:.94,lookPower:1.02,
+        bloom:.025,bloomMix:.3,dirt:.012,streak:.006,flare:.035,
+        sharpen:.18,volSigma:.0018,volFarHaze:.2,volInteriorDust:2.5,
+        aoIntensity:1.15,aoStrength:.8,key:.15,minExposure:.7,maxExposure:1.7
+      });
+      if(g.mats?.uniforms?.wet) g.mats.uniforms.wet.value=.6;
+      if(g.ground?.setRain) g.ground.setRain(.25);
+    }
     if(!g.scene || !T?.TextureLoader) return;
     g.visuals={materialReady:false,impacts:0};
-    this.installGround(g);
+    if(!map) this.installGround(g);
     this.installImpacts(g);
   },
   installGround(g) {
