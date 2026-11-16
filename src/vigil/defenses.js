@@ -9,9 +9,9 @@
   const turnToward = (a, b, step) => { const d = wrap(b - a); return Math.abs(d) <= step ? b : a + Math.sign(d) * step; };
 
   V.DEF = {
-    guard: { name: 'Rifleman Guard', hp: 220, range: 26, dmg: 22, r: 0.4, max: 6 },
-    turret: { name: 'Sentry Turret', hp: 320, range: 22, dmg: 9, interval: 0.12, r: 0.55, max: 6 },
-    floodlight: { name: 'Floodlight', max: 3, r: 0.3 },
+    guard: { name: 'Rifleman Guard', price: 900, hp: 220, range: 26, dmg: 22, r: 0.4, max: 6 },
+    turret: { name: 'Sentry Turret', price: 1200, hp: 320, range: 22, dmg: 9, interval: 0.12, r: 0.55, max: 6 },
+    floodlight: { name: 'Floodlight', price: 300, max: 3, r: 0.3 },
   };
 
   V.defenses = {
@@ -48,13 +48,32 @@
         ['olive', P(kit.bevelBox(0.034, 0.1, 0.045, 0.006), [0, -0.085, -0.1], [-0.3, 0, 0])], ['gunmetal', P(kit.bevelBox(0.03, 0.04, 0.09, 0.005), [0, 0.06, -0.02])],
         ['olive', P(kit.bevelBox(0.05, 0.05, 0.2, 0.008), [0, -0.005, 0.2])],
       ];
-      // the watchman: the same kind of painted body as the dead, alive and armed
-      const guardGeo = V.figure.build(T, kit, 'guard').geo;
-      const guardMap = new T.TextureLoader().load('assets/zombies/guard.webp'); guardMap.colorSpace = T.SRGBColorSpace;
-      const guardMat = new T.MeshStandardMaterial({ map: guardMap, bumpMap: guardMap, bumpScale: 1.6, roughness: 0.7, metalness: 0, alphaTest: 0.5, side: T.DoubleSide });
-      guardMat.name = 'vg_guard'; guardMat.color.setScalar(2.3);
-      self.kitbag = { guardGeo, guardMat, rifle: () => group(rifleParts()) };          // the other players wear the same body
+      // A guard is a soldier (src/characters.js) in the Commando outfit. Where the soldiers are not loaded it is the
+      // watchman: the same kind of painted body as the dead, alive and armed; that body is only built if it is needed.
+      const GUARD_OUTFIT = 'smg';
+      const soldiers = () => (window.GunslingerCharacters && window.GunslingerCharacters.pack ? window.GunslingerCharacters : null);
+      let watch = null;
+      const watchman = () => {
+        if (watch) return watch;
+        const geo = V.figure.build(T, kit, 'guard').geo;
+        const map = new T.TextureLoader().load('assets/zombies/guard.webp'); map.colorSpace = T.SRGBColorSpace;
+        const mat = new T.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 1.6, roughness: 0.7, metalness: 0, alphaTest: 0.5, side: T.DoubleSide });
+        mat.name = 'vg_guard'; mat.color.setScalar(2.3);
+        return (watch = { geo, mat });
+      };
+      self.kitbag = { get guardGeo() { return watchman().geo; }, get guardMat() { return watchman().mat; }, rifle: () => group(rifleParts()) };          // other players too, without the soldiers
+      let ringGeo = null;
       function makeGuard() {
+        const chars = soldiers(), actor = chars ? chars.create({ outfit: GUARD_OUTFIT }) : null;
+        if (actor) {
+          // the group is where the guard stands: everything here places and turns it, and the soldier is posed there
+          // every frame (a soldier's own root never moves). The ring shows while the guard is being placed.
+          ringGeo = ringGeo || new T.RingGeometry(0.34, 0.42, 28).rotateX(-PI / 2);
+          const mesh = new T.Group(), ring = new T.Mesh(ringGeo, new T.MeshBasicMaterial({ visible: false })); ring.position.y = 0.03; ring.renderOrder = 3;
+          mesh.add(ring); root.add(mesh); actor.show(false);
+          return { kind: 'guard', mesh, actor, ring, bones: null, pos: new T.Vector3(), yaw: 0, hp: DEF.guard.hp, maxHp: DEF.guard.hp, r: DEF.guard.r, alive: true, tgt: null, scanT: rand(0, 0.3), shotT: 0.5, burst: 0, deadT: 0, seenT: 0, aimAt: null, damage(n) { hurt(this, n); } };
+        }
+        const { geo: guardGeo, mat: guardMat } = watchman();
         const { mesh, bones } = V.figure.rig(T, guardGeo, guardMat), B = {}; for (const k in V.figure.BI) B[k] = bones[V.figure.BI[k]];
         const rifle = group(rifleParts()); rifle.position.set(-0.11, 0.1, 0.36); B.chest.add(rifle);
         // shouldered rifle, feet apart
@@ -95,6 +114,16 @@
       const flareGeo = () => group([[flareMat, P(kit.cyl(0.014, 0.014, 0.22, 6), [0, 0, 0], [0, 0, PI / 2])]]);
 
       // ---- shared ----
+      /* the soldier of a guard, posed where its group stands: rifle down while it is being placed or has nothing in
+         sight, shouldered and pointed at what it is shooting, on its back once it has fallen */
+      function poseGuard(o, placing) {
+        const a = o.actor; if (!a) return;
+        const at = o.mesh.position, facing = placing ? o.mesh.rotation.y : o.yaw, aim = o.tgt && o.tgt.alive ? o.tgt.pos : o.seenT > 0 ? o.aimAt : null;
+        let pitch = 0;
+        if (aim) pitch = Math.atan2(aim.y + (o.tgt && o.tgt.alive ? 1.1 * (o.tgt.scale || 1) : 0) - (at.y + 1.45), Math.max(0.5, Math.hypot(aim.x - at.x, aim.z - at.z)));
+        a.show(true).place(at.x, at.y, at.z, facing + PI).state({ vx: 0, vz: 0, pitch: Math.max(-0.6, Math.min(0.6, pitch)), crouch: 0, sprint: false, aiming: !placing && !!aim, alive: o.alive });
+      }
+      function drop(o) { root.remove(o.mesh); if (o.actor) { o.actor.dispose(); o.actor = null; } }
       function hurt(o, n) {
         if (!o.alive) return;
         o.hp -= n;
@@ -122,7 +151,7 @@
       const pending = (kind) => queue.filter((q) => q.kind === kind).length;
       function beginPlace(kind, price) { queue.push({ kind, price }); }
       function nextGhost() {
-        if (ghost) { root.remove(ghost.mesh); if (ghost.kind === 'guard') ghost.mesh.visible = false; ghost = null; }
+        if (ghost) { drop(ghost); if (ghost.kind === 'guard') ghost.mesh.visible = false; ghost = null; }
         S.placing = queue.length ? queue[0] : null;
         if (!S.placing) return;
         const o = S.placing.kind === 'guard' ? makeGuard() : S.placing.kind === 'turret' ? makeTurret() : makeFlood();
@@ -133,21 +162,24 @@
         o.nid = nid || ++nidSeq; o.owner = owner || (V.net && V.net.id) || null;
         o.pos.set(x, y, z); o.yaw = yaw; o.mesh.position.copy(o.pos); o.mesh.rotation.y = yaw;
         o.mesh.traverse((m) => { if (m.isMesh && m.userData.real) { m.material = m.userData.real; m.castShadow = !m.material.isMeshBasicMaterial; } });
+        if (o.ring) o.ring.visible = false;
+        poseGuard(o);
         if (o.kind === 'guard') guards.push(o); else if (o.kind === 'turret') turrets.push(o);
         else { floods.push(o); o.flood.pos.set(x, y + 2.5, z); o.flood.dir.set(Math.sin(yaw), -0.42, Math.cos(yaw)).normalize(); lights.floods.push(o.flood); o.em = lights.addEmitter({ pos: [x + Math.sin(yaw) * 2.5, y + 1.6, z + Math.cos(yaw) * 2.5], color: 0xfff0d0, intensity: 40, dist: 20, weight: 0.5 }); }
       }
       function confirmPlace() {
         if (!ghost || !ghostOk) { V.audio.play('deny'); return; }
         const o = ghost; ghost = null; queue.shift();
-        if (remote) { root.remove(o.mesh); NET().request('place', [o.kind, r2(o.mesh.position.x), r2(o.mesh.position.y), r2(o.mesh.position.z), r2(o.mesh.rotation.y)]); }
+        if (remote) { drop(o); NET().request('place', [o.kind, r2(o.mesh.position.x), r2(o.mesh.position.y), r2(o.mesh.position.z), r2(o.mesh.rotation.y)]); }
         else placeAt(o, o.mesh.position.x, o.mesh.position.y, o.mesh.position.z, o.mesh.rotation.y);
         V.audio.play('purchase', { pitch: 0.7 });
+        g.events.emit('vigil:placed', { kind: o.kind });          // this player put it there (src/progress.js counts it)
         nextGhost();
       }
       function cancelPlace(all) {
         const list = all ? queue.splice(0) : queue.splice(0, 1);
         for (const q of list) if (V.director) V.director.addMoney(q.price || 0), (S.earned -= q.price || 0);
-        if (ghost) { root.remove(ghost.mesh); ghost = null; }
+        if (ghost) { drop(ghost); ghost = null; }
         S.placing = null;
         if (!all) nextGhost();
       }
@@ -166,6 +198,7 @@
         ghostOk = Z().nav.free(x, z) && Math.hypot(x - p.pos.x, z - p.pos.z) > 0.9 && Math.hypot(x - V.CRYSTAL.x, z - V.CRYSTAL.z) > 2.4 && Math.abs(y - p.pos.y) < 1.2;
         for (const q of [...guards, ...turrets, ...floods]) if (q.alive && Math.hypot(q.pos.x - x, q.pos.z - z) < 1.0) ghostOk = false;
         ghost.mesh.position.set(x, y, z); ghost.mesh.rotation.y = Math.atan2(d.x, d.z);
+        poseGuard(ghost, true);
         ghostMat.color.setHex(ghostOk ? 0x66ffaa : 0xff5544);
       }
 
@@ -191,12 +224,12 @@
         g.events.emit('explosion', { pos: pos.clone(), size });
         if (!net || net.host) {
           // the host (or a player alone) decides what it did to the dead and to what can break
+          // measured in three dimensions to the middle of each body, so a burst in the air reaches what flies
           Z().forEachInRadius(pos.x, pos.z, radius, (z, d) => {
-            if (Math.abs(z.pos.y - pos.y) > 3) return;
             const blast = { x: pos.x, y: pos.y, z: pos.z, force: 9 * (1 - 0.6 * (d / radius)) };
             z.damage(damage * (1 - 0.75 * (d / radius)), null, tmp.copy(z.pos).sub(pos).normalize(), 'body', { by: from || 'player', blast });
-            Z().knockback(z, z.pos.x - pos.x, z.pos.z - pos.z, 9 * (1 - d / radius), 0.6);
-          });
+            Z().knockback(z, z.pos.x - pos.x, z.pos.z - pos.z, 9 * Math.max(0, 1 - d / radius), 0.6);
+          }, pos.y);
           if (V.destruct) V.destruct.blast(pos, radius * 0.75, damage);
         }
         // bodies already down and loose pieces feel it on every machine
@@ -219,11 +252,19 @@
       // ---- update ----
       function update(dt) {
         updateGhost();
+        // a controller sets it down with the trigger and puts it back with the aim button
+        if (S.placing && ghost && g.input.device === 'pad' && g.game.state === 'playing' && !S.shop && g.input.pressed) { if (g.input.pressed('fire')) confirmPlace(); else if (g.input.pressed('ads')) cancelPlace(false); }
         const zs = Z(), oc = S.buff.overclock > 0, tm = S.cls.turretMult || 1;
         for (let i = guards.length - 1; i >= 0; i--) {
           const o = guards[i];
-          if (!o.alive) { o.deadT += dt; o.bones.hips.rotation.x = -Math.min(1.5, o.deadT * 3.5); o.bones.hips.position.y = 0.96 - Math.min(0.82, o.deadT * 2.2); if (o.deadT > 6) { root.remove(o.mesh); guards.splice(i, 1); } continue; }
-          if (remote) { o.mesh.rotation.y = o.yaw + 0.22; continue; }
+          if (!o.alive) {
+            o.deadT += dt;
+            if (o.actor) poseGuard(o); else { o.bones.hips.rotation.x = -Math.min(1.5, o.deadT * 3.5); o.bones.hips.position.y = 0.96 - Math.min(0.82, o.deadT * 2.2); }
+            if (o.deadT > 6) { drop(o); guards.splice(i, 1); }
+            continue;
+          }
+          if (o.seenT > 0) o.seenT -= dt;
+          if (remote) { o.mesh.rotation.y = o.yaw + 0.22; poseGuard(o); continue; }
           o.scanT -= dt;
           if (o.scanT <= 0) { o.scanT = 0.3; o.tgt = zs.nearest(o.pos.x, o.pos.y + 1.4, o.pos.z, DEF.guard.range); }
           if (o.tgt && !o.tgt.alive) o.tgt = null;
@@ -234,12 +275,12 @@
             if (o.shotT <= 0 && Math.abs(wrap(want - o.yaw)) < 0.12) {
               const s = Math.sin(o.yaw), c = Math.cos(o.yaw);
               shoot(o, tmp.set(o.pos.x + s * 0.85 + c * -0.07, o.pos.y + 1.4, o.pos.z + c * 0.85 - s * -0.07).clone(), o.tgt, DEF.guard.dmg);
-              o.bones.chest.rotation.x = -0.05;
+              if (o.actor) o.actor.fired(); else o.bones.chest.rotation.x = -0.05;
               if (++o.burst >= 3) { o.burst = 0; o.shotT = rand(0.45, 0.9); } else o.shotT = 0.1;
             }
           }
-          o.bones.chest.rotation.x += (0 - o.bones.chest.rotation.x) * Math.min(1, dt * 10);
-          o.bones.spine.rotation.z = Math.sin(g.time.t * 0.8 + i) * 0.015;
+          if (o.actor) poseGuard(o);
+          else { o.bones.chest.rotation.x += (0 - o.bones.chest.rotation.x) * Math.min(1, dt * 10); o.bones.spine.rotation.z = Math.sin(g.time.t * 0.8 + i) * 0.015; }
         }
         for (let i = turrets.length - 1; i >= 0; i--) {
           const o = turrets[i];
@@ -295,12 +336,12 @@
         }
       }
       function reset() {
-        for (const o of [...guards, ...turrets, ...floods]) root.remove(o.mesh);
+        for (const o of [...guards, ...turrets, ...floods]) drop(o);
         for (const o of floods) { const i = lights.floods.indexOf(o.flood); if (i >= 0) lights.floods.splice(i, 1); if (o.em) lights.removeEmitter(o.em); }
         for (const o of [...thrown, ...mines, ...flares]) root.remove(o.mesh);
         for (const f of flares) lights.removeEmitter(f.em);
         guards.length = turrets.length = floods.length = mines.length = flares.length = thrown.length = queue.length = 0;
-        if (ghost) { root.remove(ghost.mesh); ghost = null; }
+        if (ghost) { drop(ghost); ghost = null; }
         S.placing = null;
       }
 
@@ -316,7 +357,30 @@
           return best;
         },
         damaged: () => [...guards, ...turrets].some((o) => o.alive && o.hp < o.maxHp),
-        repairAll() { if (remote) { NET().request('dheal', 1); return; } for (const o of [...guards, ...turrets]) if (o.alive) o.hp = o.maxHp; },
+        // what mending every guard and turret would cost: a share of each one's price for the share of it that is gone
+        repairCost: () => V.repairCost([...guards, ...turrets].filter((o) => o.alive && o.hp < o.maxHp).map((o) => ({ worth: (DEF[o.kind].price || 0) * V.REPAIR.defense, gone: 1 - o.hp / o.maxHp }))),
+        // share: how much of what each has lost comes back (1: all of it)
+        repairAll(share = 1) { if (remote) { NET().request('dfix', share); return; } const k = Math.max(0, Math.min(1, +share || 0)); for (const o of [...guards, ...turrets]) if (o.alive) o.hp = Math.min(o.maxHp, o.hp + (o.maxHp - o.hp) * k); },
+
+        // ---- a night put away (save.js): what stands, what waits to be set down, what lies armed ----
+        doc() {
+          return {
+            d: [...guards, ...turrets, ...floods].filter((o) => o.alive).map((o) => [o.kind, r2(o.pos.x), r2(o.pos.y), r2(o.pos.z), r2(o.yaw), o.maxHp ? Math.round((o.hp / o.maxHp) * 100) : 100]),
+            q: queue.map((q) => [q.kind, q.price || 0]), m: mines.map((m) => [r2(m.pos.x), r2(m.pos.y), r2(m.pos.z)]),
+          };
+        },
+        restore(doc) {
+          reset();
+          if (!doc || remote) return;
+          for (const a of doc.d || []) {
+            if (!DEF[a[0]] || count(a[0]) >= DEF[a[0]].max) continue;
+            const o = a[0] === 'guard' ? makeGuard() : a[0] === 'turret' ? makeTurret() : makeFlood();
+            placeAt(o, +a[1] || 0, +a[2] || 0, +a[3] || 0, +a[4] || 0);
+            if (o.maxHp) o.hp = Math.max(1, (o.maxHp * Math.min(100, +a[5] || 100)) / 100);
+          }
+          for (const a of doc.q || []) if (DEF[a[0]]) queue.push({ kind: a[0], price: +a[1] || 0 });
+          for (const a of (doc.m || []).slice(0, 12)) { const m = { mesh: mineGeo(), pos: new T.Vector3(+a[0] || 0, +a[1] || 0, +a[2] || 0), arm: 1.2, t: 0 }; m.mesh.position.copy(m.pos); root.add(m.mesh); mines.push(m); }
+        },
 
         // ---- playing together ----
         setRemote(v) { remote = !!v; },
@@ -349,11 +413,15 @@
             else hurt(o, 1e9);
           }
         },
+        // a guest saw the host's guard fire: the guard standing there shoulders its rifle that way
+        shotSeen(from, to) {
+          for (const o of guards) if (o.alive && o.actor && Math.hypot(o.pos.x - from.x, o.pos.z - from.z) < 1.6) { o.aimAt = to; o.seenT = 1.6; o.actor.fired(); return; }
+        },
         healAll(frac) { if (remote) return; for (const o of [...guards, ...turrets]) if (o.alive) o.hp = Math.min(o.maxHp, o.hp + o.maxHp * frac); },
         all: () => [...guards, ...turrets, ...floods],
       });
     },
     // safe no-ops until install() runs
-    update() {}, reset() {}, victimNear() { return null; }, grant() {}, cancelPlace() {}, healAll() {}, flareAt() {}, setRemote() {}, netList() { return 'D'; }, netApply() {},
+    update() {}, reset() {}, victimNear() { return null; }, grant() {}, cancelPlace() {}, healAll() {}, flareAt() {}, setRemote() {}, netList() { return 'D'; }, netApply() {}, doc() { return null; }, restore() {},
   };
 })();

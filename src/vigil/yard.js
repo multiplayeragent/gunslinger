@@ -1,5 +1,6 @@
-/* The graveyard: perimeter wall with iron railings, gates and collapsed sections, rows of graves,
-   mausoleums, dead trees, lantern posts and the small furniture of a working churchyard. */
+/* The graveyard: perimeter wall with iron railings, gates and collapsed sections (three ways through on every
+   side), rows of graves, mausoleums the dead walk out of, dead trees, lantern posts and the small furniture of
+   a working churchyard. */
 (function () {
   'use strict';
   const V = (window.Vigil = window.Vigil || {});
@@ -7,12 +8,14 @@
 
   // Paths are shared with the ground (which paints them) and with grave placement (which keeps off them).
   const PATHS = [
-    { w: 2.6, pts: [[0.4, 63], [-0.6, 46], [0, 30], [0, 14.4]] },
-    { w: 1.6, pts: [[0, 16.6], [-9.2, 17.2], [-10.6, 4], [-9.9, -4.5], [-6.9, -4.5]] },
-    { w: 1.8, pts: [[-9.9, -4.5], [-30, -4.5], [-46, -3], [-63, -7]] },
-    { w: 1.8, pts: [[0, 16.6], [9.4, 17.2], [10.6, 3], [30, 3], [46, 4.5], [63, 2]] },
-    { w: 1.8, pts: [[10.6, 3], [10.2, -12], [4.2, -17.2], [0, -30], [1.5, -46], [-1, -63]] },
-    { w: 1.4, pts: [[-9.9, -4.5], [-10.2, -14], [-3, -18.4], [4.2, -17.2]] },
+    { w: 2.6, pts: [[0.4, 63], [-0.6, 46], [0, 30], [0, 14.4]] },                                        // the road to the main door
+    { w: 1.6, pts: [[0, 16.6], [-10.5, 17.4], [-14.4, 14.2], [-14.2, 5], [-12.4, -4.5], [-8.4, -4.5]] }, // round the tower to the west door
+    { w: 1.8, pts: [[-12.4, -4.5], [-30, -4.5], [-46, -3], [-63, -7]] },
+    { w: 1.8, pts: [[0, 16.6], [10.8, 17.2], [12.2, 4.5], [30, 3], [46, 4.5], [63, 2]] },
+    { w: 1.6, pts: [[12.2, 4.5], [8.4, 4.5]] },                                                          // to the east door
+    { w: 1.8, pts: [[12.2, 4.5], [11.8, -12], [4.4, -18], [0, -30], [1.5, -46], [-1, -63]] },
+    { w: 1.4, pts: [[4.4, -18], [3.4, -14.4]] },                                                         // to the breach
+    { w: 1.4, pts: [[-12.4, -4.5], [-11.8, -14], [-3, -18.4], [4.4, -18]] },
   ];
   const segDist = (px, pz, a, b) => {
     const dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz || 1;
@@ -26,17 +29,17 @@
   };
   // Openings in the perimeter: gates stay standing, breaches have fallen in.
   const OPENINGS = {
-    south: [{ c: 0, hw: 1.9, gate: 'main' }, { c: 18, hw: 2.2 }],
-    north: [{ c: -14, hw: 2.2 }, { c: 0, hw: 1.35, gate: 'small' }],
-    west: [{ c: -4.5, hw: 1.35, gate: 'small' }, { c: 18, hw: 2.2 }],
-    east: [{ c: -16, hw: 2.2 }, { c: 3, hw: 1.35, gate: 'small' }],
+    south: [{ c: -17, hw: 2.4 }, { c: 0, hw: 2.1, gate: 'main' }, { c: 18, hw: 2.2 }],
+    north: [{ c: -14, hw: 2.2 }, { c: 0, hw: 1.7, gate: 'small' }, { c: 15, hw: 2.4 }],
+    west: [{ c: -19, hw: 2.3 }, { c: -4.5, hw: 1.7, gate: 'small' }, { c: 18, hw: 2.2 }],
+    east: [{ c: -16, hw: 2.2 }, { c: 3, hw: 1.7, gate: 'small' }, { c: 19, hw: 2.3 }],
   };
 
   V.yard = {
     PATHS, pathDist, OPENINGS,
     build(B, ctx, church) {
       const g = ctx.g, T = g.THREE, kit = V.kit, rng = kit.rng(90210), Y = V.YARD;
-      const info = { lights: [], flames: [], halos: [], graves: [], gates: [], breaches: [], trees: [], keep: [] };
+      const info = { lights: [], flames: [], halos: [], graves: [], gates: [], breaches: [], trees: [], keep: [], crypts: [] };
       const keep = info.keep;                       // circles [x, z, r] nothing else may be planted in
       const blocked = (x, z, r) => keep.some((k) => Math.hypot(x - k[0], z - k[1]) < r + k[2]);
       const side = (name, u, w) => (name === 'south' ? [u, Y + w] : name === 'north' ? [u, -Y - w] : name === 'east' ? [Y + w, u] : [-Y - w, u]);
@@ -129,12 +132,13 @@
               P.commit(B, { p: [hx, 0.04, hz], r: [0, th, 0] });
             }
             if (main) {
-              // overthrow arch with a lantern
-              const pts = Array.from({ length: 9 }, (_, i) => { const a = PI - (i / 8) * PI; return [Math.cos(a) * (o.hw + 0.1), 3.0 + Math.sin(a) * 1.0, 0]; });
+              // Overthrow arch with a lantern. The abomination comes in under it and stands over four metres
+              // with the cross on its back, so the arch rises well clear and the lantern hangs above its head.
+              const pts = Array.from({ length: 11 }, (_, i) => { const a = PI - (i / 10) * PI; return [Math.cos(a) * (o.hw + 0.1), 3.0 + Math.sin(a) * 2.6, 0]; });
               const arch = kit.tube(pts, 0.03, 5); const arch2 = kit.tube(pts.map((p) => [p[0] * 0.86, p[1] - 0.16, 0]), 0.018, 5);
               for (const geo of [arch, arch2]) B.add('iron', geo, { p: [gx, 0, gz] });
               info.lanternAt = info.lanternAt || [];
-              info.lanternAt.push([gx, 3.55, gz, true]);
+              info.lanternAt.push([gx, 4.72, gz, true]);
             }
             B.slab('flagOut', gx - (nx ? 0.7 : o.hw + 0.3), -0.08, gz - (nz ? 0.7 : o.hw + 0.3), gx + (nx ? 0.7 : o.hw + 0.3), 0.035, gz + (nz ? 0.7 : o.hw + 0.3));
             info.gates.push({ x: gx, z: gz, nx, nz, main });
@@ -163,7 +167,7 @@
         P.add('iron', kit.tube([[0, 0.57, 0], [0, 0.66, 0.03], [0, 0.72, 0]], 0.012, 4));
         P.commit(B, { p: [x, y, z] });
         info.flames.push([x, y + 0.26, z, 1.3]);
-        info.lights.push({ pos: [x, y + 0.2, z], color: 0xff9a3c, intensity: hung ? 20 : 15, dist: 16, flicker: 0.14 });
+        info.lights.push({ pos: [x, y + 0.2, z], color: 0xff9a3c, intensity: hung ? 27 : 15, dist: hung ? 18 : 16, flicker: 0.14 });
         info.halos.push([x, y + 0.2, z, 3.0, 8.5]);
       };
       const lanternPost = (x, z, ry) => {
@@ -176,11 +180,13 @@
         B.colBox(x, z, 0.1, 0.1, 0, 3, 'metal', { noNav: true });
         keep.push([x, z, 1.2]);
       };
-      for (const [x, z, ry] of [[2.3, 22.4, PI], [-2.4, 38.5, 0], [-11.4, -2.6, 0], [11.9, 4.6, PI], [5.6, -19.4, PI / 2], [-13.6, 18.2, -PI / 2], [16.5, -6.5, PI], [-18.5, -19.5, 0]]) lanternPost(x, z, ry);
+      for (const [x, z, ry] of [[2.3, 22.4, PI], [-2.4, 38.5, 0], [-14.0, -1.6, 0], [13.4, 2.2, PI], [5.6, -19.4, PI / 2], [-13.6, 18.2, -PI / 2], [16.5, -6.5, PI], [-18.5, -19.5, 0]]) lanternPost(x, z, ry);
       for (const l of info.lanternAt || []) lantern(l[0], l[1], l[2], true);
 
       // ---------------------------------------------------------------- mausoleums
       const crypt = (x, z, q, seed) => {                     // q = quarter turns; the door faces local +z
+        // the whole house is one thing that breaks: its top comes down first, then what is left of the walls
+        const body = B.begin({ kind: 'stone', hp: 2000, raze: true, tag: 'crypt' });
         const P = new kit.Part(), r2 = kit.rng(seed), w = 2.2, d = 2.8, h = 3.3;
         P.box('rubble', w * 2, h + 0.4, d * 2, 0, h / 2 - 0.2, 0);
         P.box('ashlar', w * 2 + 0.3, 0.5, d * 2 + 0.3, 0, 0.2, 0, { bevel: 0.05 });
@@ -210,16 +216,21 @@
         for (const y of [0.4, 1.1, 1.8]) door.box('rust', 1.1, 0.08, 0.03, 0.62, y, 0.04);
         for (let i = 0; i < 5; i++) for (let k = 0; k < 7; k++) door.add('rust', kit.cyl(0.012, 0.02, 0.02, 5), { r: [PI / 2, 0, 0], p: [0.16 + i * 0.23, 0.25 + k * 0.28, 0.035] });
         door.add('rust', kit.tube(Array.from({ length: 9 }, (_, i) => [1.02 + Math.cos(i / 8 * PI * 2) * 0.07, 1.1 + Math.sin(i / 8 * PI * 2) * 0.07, 0.06]), 0.012, 4));
-        const dm = new T.Matrix4().compose(new T.Vector3(-0.62, 0.3, d + 0.02), new T.Quaternion().setFromEuler(new T.Euler(0, -(0.25 + r2() * 0.5), 0)), new T.Vector3(1, 1, 1));
+        const dm = new T.Matrix4().compose(new T.Vector3(-0.62, 0.3, d + 0.02), new T.Quaternion().setFromEuler(new T.Euler(0, -(1.42 + r2() * 0.3), 0)), new T.Vector3(1, 1, 1));   // thrown wide: the dead come out of here
         for (const [key, geo, tint] of door.items) P.add(key, geo, { m: dm, tint });
         // steps
         P.box('ashlar', 2.6, 0.16, 0.5, 0, 0.22, d + 0.55, { bevel: 0.03 }); P.box('ashlar', 3.0, 0.14, 0.5, 0, 0.07, d + 1.0, { bevel: 0.03 });
         P.commit(B, { p: [x, 0, z], r: [0, q * PI / 2, 0] });
         const hx = q % 2 ? d + 0.1 : w + 0.1, hz = q % 2 ? w + 0.1 : d + 0.1;
         B.colBox(x, z, hx, hz, 0, h + 1.6);
+        B.end();
         const fx = Math.sin(q * PI / 2), fz = Math.cos(q * PI / 2);
         B.colBox(x + fx * (d + 0.7), z + fz * (d + 0.7), q % 2 ? 0.5 : 1.4, q % 2 ? 1.4 : 0.5, 0, 0.28, 'concrete');
         keep.push([x, z, 4.6]); keep.push([x + fx * 4, z + fz * 4, 2.2]);
+        // where a body walks out: from the dark behind the doorway to clear ground in front of the steps,
+        // a little off-centre to pass the open leaf
+        const lx = Math.cos(q * PI / 2) * 0.14, lz = -Math.sin(q * PI / 2) * 0.14;
+        info.crypts.push({ x, z, body, from: [x + fx * (d - 0.8) + lx, z + fz * (d - 0.8) + lz], to: [x + fx * (d + 2.1) + lx, z + fz * (d + 2.1) + lz], sill: 0.3, inside: 0.9 / 2.9 });
       };
       crypt(-22.5, 22.5, 1, 11); crypt(22.5, -23, 3, 12); crypt(22.8, 22.2, 2, 13); crypt(-21.5, -11.5, 1, 14);
 
@@ -262,7 +273,7 @@
         B.colBox(x, z, 0.86 * c + 0.3 * s2, 0.86 * s2 + 0.3 * c, 0, 0.55, 'wood'); keep.push([x, z, 1.3]);
         B.end();
       };
-      bench(3.4, 25.5, -PI / 2); bench(-12.4, 10.5, PI / 2); bench(12.6, -6.5, -PI / 2);
+      bench(3.4, 25.5, -PI / 2); bench(-15.9, 10.0, PI / 2); bench(13.9, -6.5, -PI / 2);
 
       // ---------------------------------------------------------------- dead trees
       const deadTree = (x, z, seed, sc = 1) => {
@@ -285,7 +296,7 @@
         B.colBox(x, z, 0.3 * sc, 0.3 * sc, 0, 4, 'wood');
         keep.push([x, z, 1.5]); info.trees.push([x, z]);
       };
-      [[-18, 11.5, 1], [17.4, 12.2, 1.15], [20.5, -11.5, 0.95], [-25.5, -4.2, 1.1], [12.2, -25.5, 1], [-25.8, 4.6, 0.9], [26, 9.5, 1.05], [-13.2, 26, 1], [7.5, 26.4, 0.85], [-9.5, -24.6, 1.1]]
+      [[-18.6, 11.5, 1], [17.4, 12.2, 1.15], [20.5, -11.5, 0.95], [-25.9, -7.4, 1.1], [12.2, -25.5, 1], [-25.8, 4.6, 0.9], [26, 9.5, 1.05], [-13.2, 26, 1], [7.5, 26.4, 0.85], [-9.5, -24.6, 1.1]]
         .forEach(([x, z, s], i) => deadTree(x, z, 200 + i * 7, s));
 
       // ---------------------------------------------------------------- graves
@@ -373,7 +384,8 @@
         info.graves.push({ x: x + face[0] * 1.2, z: z + face[1] * 1.2, hx: x, hz: z });
         keep.push([x, z, 0.5]);
       };
-      const inChurch = (x, z) => (Math.abs(x) < 8.6 && Math.abs(z) < 15.4) || (x > -13 && x < -5 && z > 5.6 && z < 14.4);
+      const CHW = V.CH.hw, tw = (church && church.tower) || { x: -(CHW + 2.5), z: 10, h: 2.7 };
+      const inChurch = (x, z) => (Math.abs(x) < CHW + 2.5 && Math.abs(z) < 15.4) || (x > tw.x - tw.h - 1.7 && x < -CHW + 1.1 && z > tw.z - tw.h - 1.7 && z < tw.z + tw.h + 1.7);
       for (let gx = -27; gx <= 27.01; gx += 3.1) {
         for (let gz = -27; gz <= 27.01; gz += 2.75) {
           const r2 = kit.rng(Math.round((gx + 40) * 131 + (gz + 40) * 17));
@@ -442,7 +454,8 @@
         const c = Math.abs(Math.cos(ry)), s2 = Math.abs(Math.sin(ry));
         B.colBox(x, z, 1.2 * c + 0.22 * s2, 1.2 * s2 + 0.22 * c, y, y + 0.1 + rows * 0.19, 'dirt');
       };
-      const crate = (x, y, z, ry, w = 0.9, h = 0.62, d = 0.62, col = true) => {
+      // fixed: part of the level for good (the ammunition pile); otherwise a thing that breaks
+      const crate = (x, y, z, ry, w = 0.9, h = 0.62, d = 0.62, col = true, fixed = false) => {
         const P = new kit.Part(), t = 0.035;
         P.box('pale', w - t, h - t, d - t, 0, h / 2, 0, { tint: 0.7 + rng() * 0.25 });
         for (const sx of [-1, 1]) for (const sz of [-1, 1]) P.box('timber', 0.07, h, 0.07, sx * (w / 2 - 0.03), h / 2, sz * (d / 2 - 0.03), { bevel: 0.008 });
@@ -450,6 +463,7 @@
           for (const sz of [-1, 1]) P.box('timber', w, 0.07, 0.05, 0, sy, sz * (d / 2 - 0.02), { bevel: 0.008 });
           for (const sx of [-1, 1]) P.box('timber', 0.05, 0.07, d, sx * (w / 2 - 0.02), sy, 0, { bevel: 0.008 });
         }
+        if (fixed) { P.commit(B, { p: [x, y, z], r: [0, ry, 0] }); return; }
         B.begin({ kind: 'wood', hp: 140, yaw: ry });
         P.commit(B, { p: [x, y, z], r: [0, ry, 0] });
         const r = Math.max(w, d) / 2 * 0.92; B.colBox(x, z, r, r, y, y + h, 'wood', col ? {} : { bulletOnly: true });
@@ -470,13 +484,38 @@
         B.colBox(x, z, 0.3, 0.3, y, y + 0.9, 'wood');
         B.end();
       };
-      const fl = V.CH.floor;
-      sandbags(-2.9, 16.1, 0.5); sandbags(3.0, 15.9, -0.45); sandbags(-7.9, -6.6, 1.25, 0, 2); sandbags(4.6, -15.6, 0.2, 0, 2);
-      crate(4.3, fl, 1.4, 0.1); crate(4.35, fl, 2.6, -0.06); crate(4.32, fl + 0.62, 2.55, 0.2, 0.8, 0.5, 0.56, false);
-      crate(-4.35, fl, 1.9, 0.2); cask(-4.5, fl, 3.0); cask(4.45, fl, 3.6);
-      ammoBox(4.3, fl + 0.62, 1.4, 0.3, true); ammoBox(4.25, fl + 1.12, 2.55, -0.2, false); ammoBox(-4.35, fl + 0.62, 1.9, 1.3, true); ammoBox(3.75, fl, 1.1, 0.8, false);
-      crate(6.9, 0, 14.7, 0.4);
-      info.spawnPads = [[2.6, -2.0], [-2.6, -2.0], [2.8, 1.6], [-2.8, 1.6]];
+      // sandbags beside each way into the church (cover, never a plug), supplies against the nave walls clear of the doors
+      const fl = V.CH.floor, hx = CHW - V.CH.t - 0.75;
+      sandbags(-3.6, 16.4, 0.5); sandbags(3.7, 16.2, -0.45); sandbags(-(CHW + 2.3), -6.7, 1.25, 0, 2); sandbags(CHW + 2.3, 6.7, -1.2, 0, 2); sandbags(6.7, -17.3, -0.5, 0, 2);
+      crate(hx, fl, -2.7, 0.1); crate(hx + 0.05, fl, -1.5, -0.06); crate(hx + 0.02, fl + 0.62, -1.55, 0.2, 0.8, 0.5, 0.56, false);
+      crate(-hx - 0.05, fl, 0.6, 0.2); cask(-hx - 0.1, fl, 1.8); cask(hx + 0.1, fl, -0.4);
+      crate(CHW + 0.9, 0, 14.7, 0.4);
+      // The ammunition pile, by the crates on the east wall: where the warden buys what the guns are short of
+      // (director.js `buyAmmo`). None of it is among the things that break and none of it rests on anything that
+      // is: crates, bins of loose rounds, boxes and rockets standing on the floor, and a board on two posts.
+      {
+        const px = hx - 1.2, pz = -2.1;
+        crate(px + 0.1, fl, pz - 0.5, 0.05, 1.0, 0.6, 0.72, true, true); crate(px + 0.12, fl, pz + 0.35, -0.04, 1.0, 0.6, 0.72, true, true);
+        crate(px - 0.72, fl, pz - 0.05, 0.12, 0.62, 0.5, 0.9, true, true); crate(px + 0.14, fl + 0.6, pz - 0.1, 0.1, 0.9, 0.55, 0.7, true, true);
+        for (const [bx, by, bz, ry, open] of [[0, 1.15, -0.28, 0.2, true], [0.3, 1.15, 0.06, -0.3, false], [-0.1, 0.6, 0.5, 0.1, true], [0.36, 0.6, 0.52, 1.4, false], [-0.72, 0.5, -0.3, 0.3, true], [-0.7, 0.5, 0.12, -0.2, false], [-0.02, 1.36, -0.26, 0.5, false]]) ammoBox(px + bx, fl + by, pz + bz, ry, open);
+        // two open bins of loose rounds
+        for (const [bx, bz] of [[-0.75, -0.78], [-0.78, 0.72]]) {
+          B.box('timber', 0.6, 0.3, 0.44, px + bx, fl + 0.15, pz + bz, { bevel: 0.012 });
+          for (let i = 0; i < 16; i++) B.add('brass', kit.cyl(0.012, 0.012, 0.085, 6), { r: [Math.PI / 2, rng() * 6, 0], p: [px + bx - 0.24 + rng() * 0.48, fl + 0.305 + rng() * 0.03, pz + bz - 0.16 + rng() * 0.32] });
+        }
+        // rockets on their tails
+        for (const [bx, bz] of [[-0.32, 0.86], [-0.2, 0.93], [-0.44, 0.94]]) {
+          B.add('olive', kit.cyl(0.045, 0.045, 0.6, 10), { p: [px + bx, fl, pz + bz] });
+          B.add('iron', kit.cyl(0.006, 0.045, 0.13, 10), { p: [px + bx, fl + 0.6, pz + bz] });
+        }
+        // the board: BUY AMMO HERE! (lighting.js paints it), on two posts of its own
+        for (const dz of [-1.02, 1.02]) B.box('timber', 0.09, 2.55, 0.09, px + 0.62, fl + 1.275, pz + dz, { bevel: 0.01 });
+        B.box('plank', 0.05, 0.62, 2.16, px + 0.62, fl + 2.2, pz, { bevel: 0.01 });
+        info.signs = [{ pos: [px + 0.59, fl + 2.2, pz], ry: -Math.PI / 2, w: 2.04, h: 0.5, text: 'BUY AMMO HERE!' }];
+        B.colBox(px - 0.2, pz, 0.95, 0.95, fl, fl + 1.15, 'wood');
+        info.pile = { x: px - 0.2, y: fl, z: pz };
+      }
+      info.spawnPads = [[-2.8, -2.2], [3.4, 0.2], [-3.2, 1.4]];                    // (clear of the ammunition pile)
       return info;
     },
   };

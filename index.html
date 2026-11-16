@@ -328,7 +328,7 @@ kbd { display: inline-block; font: 500 10px/1 var(--f-mono); color: var(--bone);
 .toggle[aria-pressed="true"] i { border-color: var(--signal); } .toggle[aria-pressed="true"] i::after { transform: translateX(20px); background: var(--signal); }
 
 /* ---- intro location card ---- */
-.loc-card { position: absolute; left: max(var(--gl), 5.5vw); bottom: calc(28vh + var(--sab)); padding-left: 16px; opacity: 0; transition: opacity .5s; text-shadow: var(--shadow); max-width: calc(100vw - var(--gl) - var(--gr) - 16px); }
+.loc-card { position: absolute; left: max(var(--gl), 5.5vw); bottom: calc(28vh + var(--sab)); padding-left: 16px; opacity: 0; transition: opacity .5s; pointer-events: none; text-shadow: var(--shadow); max-width: calc(100vw - var(--gl) - var(--gr) - 16px); }
 .loc-card i { position: absolute; left: 0; top: 2px; bottom: 2px; width: 3px; background: var(--signal); }
 .loc-card b { display: block; font: 700 clamp(19px, 3vw, 34px)/1.05 var(--f-display); letter-spacing: .16em; text-transform: uppercase; }
 .loc-card span { display: block; margin-top: 7px; font: 400 11px/1.4 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--bone-dim); }
@@ -366,7 +366,7 @@ kbd { display: inline-block; font: 500 10px/1 var(--f-mono); color: var(--bone);
   .h-cue.urgent { animation: none; }
 }
 
-</style><link rel="stylesheet" href="src/gunslinger.css"><link rel="stylesheet" href="src/vigil/vigil.css">
+</style><link rel="stylesheet" href="src/gunslinger.css?v=2026.11.15-blood"><link rel="stylesheet" href="src/vigil/vigil.css">
 </head><body><div id="app">
   <canvas id="view" tabindex="0"></canvas>
   <div id="ui"></div>
@@ -379,14 +379,17 @@ kbd { display: inline-block; font: 500 10px/1 var(--f-mono); color: var(--bone);
 
 <script src="mp.config.js"></script><script src="mp.config.local.js"></script>
 <script async src="https://cdn.multiplayeragent.com/sdk/mp.global.js"></script>
-<script src="src/vigil/map.js"></script><script src="src/vigil/kit.js"></script><script src="src/vigil/materials.js"></script>
+<script src="assets/zombies/motion.js"></script><script src="src/vigil/map.js"></script><script src="src/vigil/kit.js"></script><script src="src/vigil/materials.js"></script>
 <script src="src/vigil/church.js"></script><script src="src/vigil/yard.js"></script><script src="src/vigil/forest.js"></script>
 <script src="src/vigil/ground.js"></script><script src="src/vigil/lighting.js"></script><script src="src/vigil/figure.js"></script>
 <script src="src/vigil/phys.js"></script>
 <script src="src/vigil/ragdoll.js"></script>
 <script src="src/vigil/destruct.js"></script>
 <script src="src/vigil/zombies.js"></script>
-<script src="src/vigil/audio.js"></script><script src="src/vigil/crystal.js"></script><script src="src/vigil/defenses.js"></script><script src="src/vigil/net.js"></script><script src="src/vigil/ui.js"></script><script src="src/vigil/director.js"></script><script src="src/vigil/level.js"></script>
+<script src="src/vigil/beasts.js"></script>
+<script src="src/vigil/shells.js"></script>
+<script src="src/vigil/audio.js"></script><script src="src/vigil/skills.js"></script><script src="src/vigil/lifeforce.js"></script><script src="src/vigil/save.js"></script><script src="src/vigil/warm.js"></script><script src="src/vigil/fire.js"></script><script src="src/vigil/blood.js"></script><script src="src/vigil/music.js"></script><script src="src/vigil/storm.js"></script><script src="src/vigil/crystal.js"></script><script src="src/vigil/defenses.js"></script><script src="src/vigil/net.js"></script><script src="src/vigil/ui.js"></script><script src="src/vigil/wild.js"></script><script src="src/vigil/director.js"></script><script src="src/vigil/level.js"></script>
 <script src="src/maps.js"></script>
-<script src="src/ballistics.js"></script><script src="src/visuals.js"></script><script src="src/menu.js"></script><script src="src/gunslinger.js"></script><script src="vendor/gunslinger-engine.js"></script>
+<script src="src/ballistics.js?v=2026.11.15-blood"></script><script src="src/visuals.js?v=2026.11.15-blood"></script><script src="src/arsenal.js?v=2026.11.15-blood"></script><script src="src/online.js"></script><script src="src/achievements.js"></script><script src="src/levels.js"></script><script src="src/alerts.js"></script><script src="src/challenges.js"></script><script src="src/leaderboards.js"></script>
+<script src="vendor/warbash-soldier.js"></script><script src="src/characters.js"></script><script src="src/progress.js"></script><script src="src/locker.js"></script><script src="src/skilltree.js"></script><script src="src/mixer.js"></script><script src="src/controls.js"></script><script src="src/menu.js"></script><script src="src/gunslinger.js?v=2026.11.15-blood"></script><script src="vendor/gunslinger-engine.js?v=2026.11.15-blood"></script>
 </body></html>

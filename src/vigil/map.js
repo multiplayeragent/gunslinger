@@ -7,7 +7,9 @@
 
   V.WORLD = 64;                 // half extent of the walkable square
   V.YARD = 30;                  // graveyard wall, half extent
-  V.CH = { hw: 6.1, hd: 12.9, t: 0.9, eave: 7.6, rise: 5.4, floor: 0.24 };   // church outer half extents
+  // Church outer half extents. The nave is wide enough for a centre aisle and two side aisles, so the dead can
+  // come at the crystal several abreast and from four sides instead of in single file down the middle.
+  V.CH = { hw: 7.6, hd: 12.9, t: 0.9, eave: 7.6, rise: 6.2, floor: 0.24 };
   V.MOON = [-0.60, 0.62, 0.50];
   V.CRYSTAL = { x: 0, y: 1.95, z: 0, reach: 2.7 };
 
@@ -104,6 +106,14 @@ void main(){
   const map = {
     id: 'vigil',
     engine: true,
+    // The arsenal's modelled weapons, under the vigil's rules (director.js): every kit is carried and picked on 3–9,
+    // the gunsmith opens on Tab (H is the medkit), the laser is on L (T throws a flare), F's flashlight stands in
+    // for the weapon light, and the vigil decides damage, so the gunsmith offers no ammunition row.
+    arsenal: {
+      roster: ['carbine', 'pdw', 'breacher', 'marksman', 'support', 'pump', 'flak', 'rocket', 'sidearm', 'heavy'],
+      numberKeys: false, gunsmithKeys: ['Tab'], laserKey: 'KeyL', weaponLight: false,
+      slots: ['optic', 'muzzle', 'barrel', 'underbarrel', 'finish'], keepOnReset: true, swapRigs: true,
+    },
     name: 'Churchyard',
     place: 'Crystal Vigil',
     bootLine: 'Lighting the lanterns',
@@ -122,6 +132,15 @@ void main(){
     },
     horizonGLSL: HORIZON,
     shadowBounds: null,
+    // The engine's shadow map covers the whole 136 m square (about 4.7 cm a texel). In play it is refitted each
+    // frame to a 64 m box ahead of the camera and snapped to whole texels (1.6 cm, still and in motion); views
+    // from above or outside the walls keep the whole yard.
+    shadowFocus: {
+      wide: (p) => p.y > 12 || Math.abs(p.x) > 60 || Math.abs(p.z) > 60,
+      half: 32, wideHalf: 70, ahead: 15, wideAhead: 0, dist: 80, near: 4, far: 175, maxY: 8,
+    },
+    // Night around the weapon: a dim cool key, the moon's colour on the rim, almost nothing back from wet earth.
+    viewLights: { key: 0.3, bounce: [0x39404a, 0.1], rim: [0xb4c6ff, 0.18] },
     skyFragment() { return sky(V.I.noiseGLSL); },
 
     // Called by the engine while it loads, before any module exists.
@@ -147,6 +166,8 @@ void main(){
       // Keys: melee moves to V (the rifle kit decides the fire mode), F becomes the flashlight, Enter starts a wave.
       delete I.bindings.KeyF; I.bindings.KeyV = 'melee';
       delete I.bindings.Enter; delete I.bindings.NumpadEnter;
+      // 1 draws the rifle in the engine whether or not one has been bought: here the kit keys and Q do that
+      delete I.bindings.Digit1; delete I.bindings.Numpad1;
       Object.assign(I.radio, {
         intro: 'Warden, the dead are rising. Get to the church and hold it. The crystal must not go dark.',
         contact: 'They have your scent. Make every round count.',

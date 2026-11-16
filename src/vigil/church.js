@@ -1,5 +1,6 @@
-/* The ruined church: shell, tower, roof and furnishings. The crystal dais is at the origin, the main door faces
-   south (+Z), the side door is in the west wall and the north wall is breached. */
+/* The ruined church: shell, tower, roof and furnishings. The crystal dais is at the origin. There are four ways
+   in, one on each side: the main door faces south (+Z), a side door stands in the west wall and another in the
+   east, and the north wall is breached. Each is wide enough for several of the dead abreast. */
 (function () {
   'use strict';
   const V = (window.Vigil = window.Vigil || {});
@@ -114,20 +115,31 @@
       };
 
       // ---------------------------------------------------------------- shell
+      // The walls can be brought down, a bay at a time (kit.js `endGrid`, destruct.js): the cuts between bays fall
+      // clear of every window, door and buttress on both walls of each pair. BAYS is shared with the roof, so each
+      // bay of the roof stands on a bay of each side wall.
+      const BAYS = [-10.3, -7.7, -1.3, 1.3, 7.7, 10.3];
+      B.begin({ kind: 'stone', hp: 2400, raze: true, tag: 'church' });
       const WIN = { w: 1.5, y0: 2.3, spring: 4.75, apex: 6.35 };
       const win = (c) => ({ c, ...WIN });
-      const sideDoor = { c: -4.5, w: 1.7, y0: 0.02, spring: 2.4, apex: 3.4 };
-      const mainDoor = { c: 0, w: 3.0, y0: 0.02, spring: 3.1, apex: 4.75 };
-      const breach = [[1.45, 0.02], [5.02, 0.02], [5.06, 1.25], [4.72, 2.15], [4.92, 3.05], [4.42, 3.95], [4.12, 5.2], [3.42, 5.95], [2.92, 6.7], [2.42, 6.25], [2.02, 5.05], [1.57, 4.1], [1.77, 2.9], [1.37, 1.7]];
+      const sideDoor = { c: -4.5, w: 2.6, y0: 0.02, spring: 2.6, apex: 3.75 };          // west wall
+      const eastDoor = { c: 4.5, w: 2.6, y0: 0.02, spring: 2.6, apex: 3.75 };           // east wall
+      const mainDoor = { c: 0, w: 4.0, y0: 0.02, spring: 3.3, apex: 5.3 };
+      const breach = [[1.2, 0.02], [5.48, 0.02], [5.53, 1.25], [5.12, 2.15], [5.36, 3.05], [4.76, 3.95], [4.4, 5.2], [3.56, 5.95], [2.96, 6.7], [2.36, 6.25], [1.88, 5.05], [1.34, 4.1], [1.58, 2.9], [1.1, 1.7]];
+      const breachA = 1.2, breachB = 5.48;                                              // the gap at floor level
       const lancetC = { c: 0, w: 1.5, y0: 3.2, spring: 7.4, apex: 9.3 }, lancetW = { c: -2.35, w: 1.05, y0: 3.2, spring: 6.3, apex: 7.7 };
-      const eastWin = [-9, -4.5, 0, 4.5, 9], westWin = [-9, 0, 4.5];
+      const eastWin = [-9, -4.5, 0, 9], westWin = [-9, 0, 4.5];
+      const wide = hw - 6.1;                                                            // how far the side walls stand out from the old nave
 
       kit.wall(B, { axis: 'x', at: hd - t / 2, u0: -hw, u1: hw, y0: -0.5, y1: eave, t, out: 1, matOut: out, matIn: inn, gable: rise, holes: [mainDoor, { c: 0, cy: 9.0, r: 1.5 }] });
       kit.wall(B, { axis: 'x', at: -(hd - t / 2), u0: -hw, u1: hw, y0: -0.5, y1: eave, t, out: -1, matOut: out, matIn: inn, gable: rise, holes: [lancetC, lancetW, { pts: breach }] });
-      kit.wall(B, { axis: 'z', at: hw - t / 2, u0: -ihd, u1: ihd, y0: -0.5, y1: eave, t, out: 1, matOut: out, matIn: inn, holes: eastWin.map(win) });
+      // The wall's collider leaves the breach as a plain rectangle. The stone that still hangs over it on either
+      // side is put back here, so what is tall keeps to the part of the gap that is open at its own height.
+      for (const [x0, y0, x1] of [[1.1, 2.2, 1.45], [1.45, 4.6, 1.9], [1.9, 5.6, 2.4], [5.15, 1.9, 5.53], [4.8, 3.6, 5.15], [4.4, 4.6, 4.8], [3.6, 5.7, 4.4]]) B.col(x0, y0, -hd, x1, 6.45, -ihd, 'concrete', { noNav: true });
+      kit.wall(B, { axis: 'z', at: hw - t / 2, u0: -ihd, u1: ihd, y0: -0.5, y1: eave, t, out: 1, matOut: out, matIn: inn, holes: eastWin.map(win).concat([eastDoor]) });
       kit.wall(B, { axis: 'z', at: -(hw - t / 2), u0: -ihd, u1: ihd, y0: -0.5, y1: eave, t, out: -1, matOut: out, matIn: inn, holes: westWin.map(win).concat([sideDoor]) });
 
-      eastWin.forEach((z, i) => windowFill('z', hw - t / 2, 1, z, WIN.w, WIN.y0, WIN.spring, WIN.apex, [0, 2, 1, 3, 0][i]));
+      eastWin.forEach((z, i) => windowFill('z', hw - t / 2, 1, z, WIN.w, WIN.y0, WIN.spring, WIN.apex, [0, 2, 1, 3][i]));
       westWin.forEach((z, i) => windowFill('z', -(hw - t / 2), -1, z, WIN.w, WIN.y0, WIN.spring, WIN.apex, [1, 0, 3][i]));
       windowFill('x', -(hd - t / 2), -1, lancetC.c, lancetC.w, lancetC.y0, lancetC.spring, lancetC.apex, 1);
       windowFill('x', -(hd - t / 2), -1, lancetW.c, lancetW.w, lancetW.y0, lancetW.spring, lancetW.apex, 0);
@@ -151,10 +163,10 @@
       for (const [band, depth, proud] of [[0.3, 0.2, 0.1], [0.55, 0.1, 0.02]]) {
         B.add('ashlar', onWall('x', hd - t / 2, kit.archBand(mainDoor.w, 0, mainDoor.spring, mainDoor.apex, band, depth, 8), t / 2 - depth + proud));
       }
-      {
-        const band = kit.archBand(sideDoor.w, 0, sideDoor.spring, sideDoor.apex, 0.22, 0.16, 6);
-        kit.xf(band, { p: [sideDoor.c, 0, 0] });
-        B.add('ashlar', onWall('z', -(hw - t / 2), band, -t / 2 - 0.08));
+      for (const [door, at, w] of [[sideDoor, -(hw - t / 2), -t / 2 - 0.08], [eastDoor, hw - t / 2, t / 2 - 0.08]]) {
+        const band = kit.archBand(door.w, 0, door.spring, door.apex, 0.22, 0.16, 6);
+        kit.xf(band, { p: [door.c, 0, 0] });
+        B.add('ashlar', onWall('z', at, band, w));
       }
 
       // plinth, string course and eaves cornice (dressed stone), broken at the doors
@@ -165,10 +177,11 @@
           if (axis === 'x') B.slab('ashlar', a, y0, at + sign * (t / 2 - 0.05), b, y1, at + sign * d, { bevel });
           else B.slab('ashlar', at + sign * (t / 2 - 0.05), y0, a, at + sign * d, y1, b, { bevel });
         };
-        run('x', hd - t / 2, 1, -hw - proud, skipDoors ? -1.85 : hw + proud); if (skipDoors) run('x', hd - t / 2, 1, 1.85, hw + proud);
-        run('x', -(hd - t / 2), -1, -hw - proud, skipDoors ? 1.3 : hw + proud); if (skipDoors) run('x', -(hd - t / 2), -1, 5.15, hw + proud);
-        run('z', hw - t / 2, 1, -hd, hd);
-        run('z', -(hw - t / 2), -1, -hd, skipDoors ? sideDoor.c - 1.1 : hd); if (skipDoors) run('z', -(hw - t / 2), -1, sideDoor.c + 1.1, 7.3);
+        const md = mainDoor.w / 2 + 0.35, sd = sideDoor.w / 2 + 0.25, ed = eastDoor.w / 2 + 0.25;
+        run('x', hd - t / 2, 1, -hw - proud, skipDoors ? -md : hw + proud); if (skipDoors) run('x', hd - t / 2, 1, md, hw + proud);
+        run('x', -(hd - t / 2), -1, -hw - proud, skipDoors ? breachA - 0.15 : hw + proud); if (skipDoors) run('x', -(hd - t / 2), -1, breachB + 0.12, hw + proud);
+        run('z', hw - t / 2, 1, -hd, skipDoors ? eastDoor.c - ed : hd); if (skipDoors) run('z', hw - t / 2, 1, eastDoor.c + ed, hd);
+        run('z', -(hw - t / 2), -1, -hd, skipDoors ? sideDoor.c - sd : hd); if (skipDoors) run('z', -(hw - t / 2), -1, sideDoor.c + sd, 7.3);
       };
       course(-0.1, 0.62, 0.12, 0.05, true);
       course(2.06, 2.2, 0.07, 0.03, true);
@@ -206,27 +219,34 @@
       };
       for (const z of [-11.3, -6.75, -2.25, 2.25, 6.75, 11.3]) buttress(hw, z, 1, 0);
       for (const z of [-11.3, -6.75, -2.25, 2.25, 6.6]) buttress(-hw, z, -1, 0);
-      for (const x of [-5.0, 5.0]) buttress(x, -hd, 0, -1, 1);
-      buttress(5.0, hd, 0, 1, 1);
+      for (const x of [-(hw - 1.7), hw - 1.7]) buttress(x, -hd, 0, -1, 1);
+      buttress(hw - 1.7, hd, 0, 1, 1);
+
+      B.endGrid({ xs: [-3.3, 3.3], zs: BAYS, capKeys: [out, inn], capKey: out });
 
       // ---------------------------------------------------------------- floors and steps
       B.slab('flag', -ihw, -0.3, -ihd, ihw, floor, ihd);
       B.col(-ihw, -0.3, -ihd, ihw, floor, ihd, 'concrete');
       // thresholds through the door openings and the breach
-      B.slab('flagOut', -1.5, -0.3, ihd, 1.5, floor, hd + 0.02); B.col(-1.5, -0.3, ihd, 1.5, floor, hd, 'concrete');
-      B.slab('flagOut', -hw - 0.02, -0.3, sideDoor.c - 0.85, -ihw, floor, sideDoor.c + 0.85); B.col(-hw, -0.3, sideDoor.c - 0.85, -ihw, floor, sideDoor.c + 0.85, 'concrete');
-      B.slab('flagOut', 1.5, -0.3, -hd - 0.05, 5.0, floor - 0.02, -ihd); B.col(1.5, -0.3, -hd, 5.0, floor, -ihd, 'concrete');
+      const mh = mainDoor.w / 2, sh = sideDoor.w / 2, eh = eastDoor.w / 2;
+      B.slab('flagOut', -mh, -0.3, ihd, mh, floor, hd + 0.02); B.col(-mh, -0.3, ihd, mh, floor, hd, 'concrete');
+      B.slab('flagOut', -hw - 0.02, -0.3, sideDoor.c - sh, -ihw, floor, sideDoor.c + sh); B.col(-hw, -0.3, sideDoor.c - sh, -ihw, floor, sideDoor.c + sh, 'concrete');
+      B.slab('flagOut', ihw, -0.3, eastDoor.c - eh, hw + 0.02, floor, eastDoor.c + eh); B.col(ihw, -0.3, eastDoor.c - eh, hw, floor, eastDoor.c + eh, 'concrete');
+      B.slab('flagOut', breachA, -0.3, -hd - 0.05, breachB, floor - 0.02, -ihd); B.col(breachA, -0.3, -hd, breachB, floor, -ihd, 'concrete');
       // south steps
-      B.slab('ashlar', -2.4, -0.3, hd, 2.4, floor, hd + 0.75, { bevel: 0.03 }); B.col(-2.4, -0.3, hd, 2.4, floor, hd + 0.75, 'concrete');
-      B.slab('ashlar', -2.9, -0.3, hd + 0.75, 2.9, 0.12, hd + 1.3, { bevel: 0.03 }); B.col(-2.9, -0.3, hd + 0.75, 2.9, 0.12, hd + 1.3, 'concrete');
-      // west step
-      B.slab('ashlar', -hw - 0.75, -0.3, sideDoor.c - 1.15, -hw, 0.12, sideDoor.c + 1.15, { bevel: 0.03 }); B.col(-hw - 0.75, -0.3, sideDoor.c - 1.15, -hw, 0.12, sideDoor.c + 1.15, 'concrete');
+      B.slab('ashlar', -mh - 0.9, -0.3, hd, mh + 0.9, floor, hd + 0.75, { bevel: 0.03 }); B.col(-mh - 0.9, -0.3, hd, mh + 0.9, floor, hd + 0.75, 'concrete');
+      B.slab('ashlar', -mh - 1.4, -0.3, hd + 0.75, mh + 1.4, 0.12, hd + 1.3, { bevel: 0.03 }); B.col(-mh - 1.4, -0.3, hd + 0.75, mh + 1.4, 0.12, hd + 1.3, 'concrete');
+      // west and east steps
+      B.slab('ashlar', -hw - 0.75, -0.3, sideDoor.c - sh - 0.3, -hw, 0.12, sideDoor.c + sh + 0.3, { bevel: 0.03 }); B.col(-hw - 0.75, -0.3, sideDoor.c - sh - 0.3, -hw, 0.12, sideDoor.c + sh + 0.3, 'concrete');
+      B.slab('ashlar', hw, -0.3, eastDoor.c - eh - 0.3, hw + 0.75, 0.12, eastDoor.c + eh + 0.3, { bevel: 0.03 }); B.col(hw, -0.3, eastDoor.c - eh - 0.3, hw + 0.75, 0.12, eastDoor.c + eh + 0.3, 'concrete');
       // chancel step and altar dais
       B.slab('flag', -ihw, floor, -ihd, ihw, 0.4, -8.2); B.col(-ihw, floor, -ihd, ihw, 0.4, -8.2, 'concrete');
       B.slab('ashlarIn', -ihw, floor, -8.2, ihw, 0.4, -8.06, { bevel: 0.02 });
-      B.slab('ashlarIn', -2.3, 0.4, -11.75, 2.3, 0.56, -9.55, { bevel: 0.025 }); B.col(-2.3, 0.4, -11.75, 2.3, 0.56, -9.55, 'concrete');
+      B.slab('ashlarIn', -2.3, 0.4, -11.75, 2.3, 0.56, -9.55, { bevel: 0.025 }); B.col(-2.3, 0.4, -11.75, 2.3, 0.56, -9.55, 'concrete', { noNav: true });
 
       // ---------------------------------------------------------------- roof
+      // slates, boards, rafters and trusses in the same bays as the walls: a bay falls when the wall under it has gone
+      B.begin({ kind: 'wood', hp: 1600, rests: ['church'], tag: 'church-roof' });           // (a rocket at the foot of the wall should not take the roof off first)
       const ang = Math.atan2(rise, hw), ca = Math.cos(ang), sa = Math.sin(ang);
       const ridgeY = eave + rise + 0.28, over = 0.5;
       const slopeLen = (hw + over) / ca;
@@ -254,11 +274,12 @@
           if (open(s0 - 0.05, (za + zb) / 2)) edge.push([d, a]);
           if (open(s1 + 0.05, (za + zb) / 2)) edge.push([b, c]);
         }
-        const tp = [], bp = [], ep = [];
+        const tp = [], bp = [], bo = [], ep = [];             // bo: the underside past the walls, out in the weather
         const down = (p) => [p[0] - side * sa * thick, p[1] - ca * thick, p[2]];
         for (const q of top) {
           tp.push(q.a, q.b, q.c, q.a, q.c, q.d);
-          bp.push(down(q.a), down(q.c), down(q.b), down(q.a), down(q.d), down(q.c));
+          const outside = Math.abs((q.za + q.zb) / 2) > ihd + 0.2 || ((q.s0 + q.s1) / 2) * slopeLen * ca > ihw + 0.35;
+          (outside ? bo : bp).push(down(q.a), down(q.c), down(q.b), down(q.a), down(q.d), down(q.c));
         }
         for (const [a, b] of edge) ep.push(a, b, down(b), a, down(b), down(a));
         const mk = (pts, outward) => kit.fromTris(pts, outward);
@@ -272,6 +293,8 @@
         B.add('slate', gt, { uv: 'keep' });
         const gb = mk(bp, false); fixUp(gb, side, -sa, -ca);
         B.add('plankIn', gb, { cast: false });
+        // the overhang is lit by the night, not by the nave: boarded with the nave's material it glowed along every eave and gable
+        if (bo.length) { const go = mk(bo, false); fixUp(go, side, -sa, -ca); B.add('slate', go, { cast: false }); }
         if (ep.length) { B.add('slate', kit.fromTris(ep, false)); B.add('slate', kit.flip(kit.fromTris(ep, false))); }
       }
       function fixUp(geo, side, sx, cy) {
@@ -339,6 +362,8 @@
       // wall plates
       for (const side of [-1, 1]) B.box('timberIn', 0.3, 0.2, ihd * 2, side * (ihw + 0.2), eave + 0.02, 0);
 
+      B.endGrid({ zs: BAYS });
+
       // ---------------------------------------------------------------- doors
       const leaf = (w, spring, apex) => {
         // half of a pointed door, hinge edge at x = 0, extending +x
@@ -363,15 +388,41 @@
         return parts;
       };
       // main doors swung out against the facade
-      hang(doorParts(1.5, mainDoor.spring - 0.02, mainDoor.apex - 0.03), 1.5, floor, hd + 0.02, -0.28, false);
-      hang(doorParts(1.5, mainDoor.spring - 0.02, mainDoor.apex - 0.03), -1.5, floor, hd + 0.02, 0.42, true);
-      B.col(1.5, floor, hd, 3.0, 3.2, hd + 0.5, 'wood', { noNav: true }); B.col(-3.0, floor, hd, -1.5, 3.2, hd + 0.68, 'wood', { noNav: true });
-      // side door hangs half open into the nave
-      hang(doorParts(1.7, sideDoor.spring - 0.02, sideDoor.apex - 0.03), -ihw - 0.05, floor, sideDoor.c - 0.85, -PI / 2 + 1.05, false);
-      B.col(-ihw, floor, sideDoor.c - 1.0, -ihw + 0.95, 2.4, sideDoor.c - 0.78, 'wood', { noNav: true });
+      // (each leaf is its own thing that breaks, and comes off with the wall it hangs on)
+      const DOOR = { kind: 'wood', hp: 500, hangs: ['church'], tag: 'door' };
+      B.begin(DOOR);
+      hang(doorParts(mh, mainDoor.spring - 0.02, mainDoor.apex - 0.03), mh, floor, hd + 0.02, -0.28, false);
+      B.col(mh, floor, hd, mh * 2, 3.2, hd + 0.6, 'wood');
+      B.end();
+      B.begin(DOOR);
+      hang(doorParts(mh, mainDoor.spring - 0.02, mainDoor.apex - 0.03), -mh, floor, hd + 0.02, 0.42, true);
+      B.col(-mh * 2 + 0.1, floor, hd, -mh, 3.2, hd + 0.85, 'wood');
+      B.end();
+      // The leaves stand in the way of anything coming along the wall, so the dead's grid has to know them: marked
+      // noNav they were walked into and held whoever did. They start at the jambs, which the wall already closes
+      // to the grid, so the doorway is no narrower for it.
+      // The side doors are pairs of leaves thrown back into the nave, each nearly flat against the wall beside its
+      // jamb. A leaf hinged at the low-z jamb lies along +z when shut and `open` swings it inward; its partner at
+      // the high-z jamb is the mirror image.
+      const pair = (door, sx, openA, openB) => {
+        const lw = door.w / 2, x = sx * (ihw + 0.05), parts = () => doorParts(lw, door.spring - 0.02, door.apex - 0.03);
+        B.begin(DOOR);
+        const dirA = sx < 0 ? -PI / 2 + openA : -PI / 2 - openA;      // heading of the leaf from its hinge
+        hang(parts(), x, floor, door.c - lw, dirA, false);
+        hang(parts(), x, floor, door.c + lw, sx < 0 ? PI / 2 - openB : PI / 2 + openB, false);
+        for (const [zh, o, zs] of [[door.c - lw, openA, -1], [door.c + lw, openB, 1]]) {
+          const inx = lw * Math.sin(o) + 0.1, tip = zh - zs * lw * Math.cos(o);      // reach into the nave; where the free edge ends up
+          B.col(sx < 0 ? -ihw : ihw - inx, floor, Math.min(zh, tip) - 0.06, sx < 0 ? -ihw + inx : ihw, 2.4, Math.max(zh, tip) + 0.06, 'wood', { noNav: true });
+        }
+        B.end();
+      };
+      pair(sideDoor, -1, 2.72, 2.5);
+      pair(eastDoor, 1, 2.8, 2.9);
 
       // ---------------------------------------------------------------- tower
-      const tx = -8.6, tz = 10.0, th = 2.7;                 // centre and half width
+      // four tiers, each standing on the one below: base, upper stage, belfry, spire
+      B.begin({ kind: 'stone', hp: 3600, raze: true, tag: 'tower' });
+      const th = 2.7, tx = -(hw + th - 0.2), tz = 10.0;    // half width and centre: it stands against the west wall
       {
         B.slab(out, tx - th, -0.5, tz - th, tx + th, 6.5, tz + th);
         B.slab('ashlar', tx - th - 0.14, -0.1, tz - th - 0.14, tx + th + 0.14, 0.62, tz + th + 0.14, { bevel: 0.05 });
@@ -449,6 +500,8 @@
         B.col(tx - th, 0, tz - th, tx + th, 17.4, tz + th, 'concrete');
       }
 
+      B.endGrid({ ys: [6.5, 11.8, 16.5], restsAbove: ['tower'] });
+
       // ---------------------------------------------------------------- crystal dais
       for (const [r, y0, y1] of [[2.15, floor, 0.38], [1.65, 0.38, 0.52], [1.15, 0.52, 0.66]]) {
         B.add('ashlarIn', kit.cyl(r, r + 0.03, y1 - y0, 28), { p: [0, y0, 0] });
@@ -466,25 +519,39 @@
       // ---------------------------------------------------------------- altar and chancel
       {
         const az = -10.7, ay = 0.56;
+        // The altar is one thing that breaks (stone, tag `altar`); the cross, the two candlesticks and the book each
+        // rest on it, so they can be shot off it one at a time and all come down when it does.
+        B.begin({ kind: 'stone', hp: 900, tag: 'altar' });
         B.box('ashlarIn', 2.5, 0.92, 0.95, 0, ay + 0.46, az, { bevel: 0.03 });
         for (const x of [-0.95, 0, 0.95]) B.add('ashlarIn', kit.archBand(0.5, 0, 0.42, 0.66, 0.06, 0.04, 5), { p: [x, ay + 0.1, az + 0.475] });
         B.box('ashlarIn', 2.85, 0.12, 1.2, 0, ay + 0.98, az, { bevel: 0.03 });
         // runner cloth with a front drop
         B.box('cloth', 1.0, 0.02, 1.26, 0, ay + 1.05, az); B.box('cloth', 1.0, 0.5, 0.02, 0, ay + 0.8, az + 0.63);
+        B.col(-1.45, ay, az - 0.62, 1.45, ay + 1.1, az + 0.62, 'concrete');
+        B.end();
+        B.begin({ kind: 'metal', hp: 60, rests: ['altar'] });
         B.box('brassIn', 0.05, 0.9, 0.05, 0, ay + 1.52, az - 0.25, { bevel: 0.008 }); B.box('brassIn', 0.5, 0.05, 0.05, 0, ay + 1.72, az - 0.25, { bevel: 0.008 });
         B.add('brassIn', kit.lathe([[0.16, 0], [0.16, 0.03], [0.05, 0.07], [0.03, 0.1]], 12), { p: [0, ay + 1.04, az - 0.25] });
+        B.col(-0.27, ay + 1.1, az - 0.31, 0.27, ay + 2.0, az - 0.19, 'metal', { bulletOnly: true });
+        B.end();
         // altar candlesticks
         for (const x of [-1.05, 1.05]) {
+          const stick = B.begin({ kind: 'metal', hp: 40, rests: ['altar'] });
           B.add('brassIn', kit.lathe([[0.1, 0], [0.1, 0.02], [0.03, 0.06], [0.022, 0.2], [0.04, 0.24], [0.022, 0.28], [0.022, 0.42], [0.055, 0.45], [0.055, 0.47]], 10), { p: [x, ay + 1.04, az - 0.1] });
           B.add('wax', kit.cyl(0.02, 0.022, 0.26, 8), { p: [x, ay + 1.51, az - 0.1] });
-          info.flames.push([x, ay + 1.81, az - 0.1, 1]);
+          const fl = [x, ay + 1.81, az - 0.1, 1]; info.flames.push(fl); stick.flames = [fl];
+          B.col(x - 0.1, ay + 1.1, az - 0.2, x + 0.1, ay + 1.8, az, 'metal', { bulletOnly: true });
+          B.end();
         }
         // open book
+        B.begin({ kind: 'wood', hp: 20, rests: ['altar'] });
         B.box('plankIn', 0.44, 0.03, 0.3, 0.45, ay + 1.065, az + 0.2, { r: [0, 0.2, 0] });
         B.box('wax', 0.4, 0.02, 0.27, 0.45, ay + 1.09, az + 0.2, { r: [0, 0.2, 0], tint: 0.8 });
-        B.col(-1.45, ay, az - 0.62, 1.45, ay + 1.1, az + 0.62, 'concrete');
+        B.col(0.2, ay + 1.1, az + 0.03, 0.7, ay + 1.17, az + 0.37, 'wood', { bulletOnly: true });
+        B.end();
         // reredos: carved timber screen under the lancets
         const rz = -ihd + 0.12;
+        B.begin({ kind: 'wood', hp: 500 });
         B.box('timberIn', 4.4, 2.5, 0.12, -0.6, ay + 1.25, rz, { bevel: 0.02 });
         for (let i = 0; i < 7; i++) {
           const x = -2.55 + i * 0.65;
@@ -492,16 +559,31 @@
           B.add('timberIn', kit.cyl(0.02, 0.07, 0.4, 4), { p: [x - 0.325, ay + 2.5, rz], r: [0, PI / 4, 0] });
         }
         B.box('timberIn', 4.6, 0.14, 0.2, -0.6, ay + 2.52, rz + 0.02, { bevel: 0.03 });
-        // floor candelabra either side
-        for (const x of [-2.9, 2.9]) {
+        B.col(-2.85, ay, rz - 0.1, 1.65, ay + 2.62, rz + 0.12, 'wood', { bulletOnly: true });
+        B.end();
+        // Floor candelabra either side. The one on the breach's side went over when the wall came in and lies
+        // against the heap, out: it stood in the middle of the way in, where nothing wide could pass it.
+        {
+          B.begin({ kind: 'metal', hp: 120 });
+          const P = new kit.Part();
+          P.add('ironIn', kit.lathe([[0.2, 0], [0.2, 0.03], [0.04, 0.08], [0.022, 0.2], [0.022, 1.25], [0.05, 1.28], [0.022, 1.31], [0.022, 1.42]], 8));
+          for (let k = 1; k < 5; k++) { const a = (k / 5) * PI * 2; P.add('ironIn', kit.tube([[0, 1.3, 0], [Math.cos(a) * 0.19, 1.36, Math.sin(a) * 0.19]], 0.012, 4)); }
+          for (const [dx, dz, ry] of [[0.25, 0.3, 0.4], [0.42, -0.12, 1.9], [0.05, 0.45, 2.7]]) B.add('wax', kit.cyl(0.016, 0.018, 0.16, 6), { r: [PI / 2, ry, 0], p: [6.25 + dx, 0.42, -10.3 + dz] });
+          P.commit(B, { p: [4.75, 0.6, -10.42], r: [0.08, 0.12, -PI / 2 + 0.07] });
+          B.col(4.7, 0.42, -10.65, 6.3, 0.85, -9.8, 'metal', { bulletOnly: true });
+          B.end();
+        }
+        for (const x of [-2.9]) {
+          const stand = B.begin({ kind: 'metal', hp: 120 }); stand.flames = [];
           B.add('ironIn', kit.lathe([[0.2, 0], [0.2, 0.03], [0.04, 0.08], [0.022, 0.2], [0.022, 1.25], [0.05, 1.28], [0.022, 1.31], [0.022, 1.42]], 8), { p: [x, 0.4, -9.3] });
           for (let k = 0; k < 5; k++) {
             const a = (k / 5) * PI * 2, r = k ? 0.19 : 0, h = k ? 1.36 : 1.46;
             if (k) B.rod('ironIn', [x, 0.4 + 1.3, -9.3], [x + Math.cos(a) * r, 0.4 + h, -9.3 + Math.sin(a) * r], 0.012, 0.012, { seg: 4 });
             B.add('wax', kit.cyl(0.016, 0.018, 0.16, 6), { p: [x + Math.cos(a) * r, 0.4 + h, -9.3 + Math.sin(a) * r] });
-            info.flames.push([x + Math.cos(a) * r, 0.4 + h + 0.2, -9.3 + Math.sin(a) * r, 0.8]);
+            const fl = [x + Math.cos(a) * r, 0.4 + h + 0.2, -9.3 + Math.sin(a) * r, 0.8]; info.flames.push(fl); stand.flames.push(fl);
           }
           B.colBox(x, -9.3, 0.14, 0.14, 0.4, 1.9, 'metal', { noNav: true });
+          B.end();
         }
         info.lights.push({ pos: [0, 2.9, -9.6], color: 0xffa050, intensity: 24, dist: 12, flicker: 0.22 });
       }
@@ -522,9 +604,14 @@
         const TH = g.THREE, M = new TH.Matrix4().compose(new TH.Vector3(x, floor + (o.y || 0), z), new TH.Quaternion().setFromEuler(new TH.Euler(o.rx || 0, o.ry || 0, o.rz || 0, 'YXZ')), new TH.Vector3(1, 1, 1));
         B.begin({ kind: 'wood', hp: 300, yaw: o.ry || 0 });
         for (const [key, geo] of parts) B.add(key, geo, { m: M, tint: o.tint || 1 });
-        if (!o.noCol) {
+        if (!o.noCol && (o.rx || o.rz)) {
+          // tipped over: its collider is the space it really takes up, wherever it has come to lie
+          const box = new TH.Box3(), part = new TH.Box3();
+          for (const [, geo] of parts) { geo.computeBoundingBox(); box.union(part.copy(geo.boundingBox).applyMatrix4(M)); }
+          B.col(box.min.x, floor, box.min.z, box.max.x, box.max.y, box.max.z, 'wood');
+        } else if (!o.noCol) {
           const c = Math.abs(Math.cos(o.ry || 0)), s2 = Math.abs(Math.sin(o.ry || 0));
-          B.colBox(x, z, (len / 2) * c + 0.34 * s2 + 0.02, (len / 2) * s2 + 0.34 * c + 0.02, floor, floor + (o.low ? 0.5 : 1.15), 'wood');
+          B.colBox(x, z, (len / 2) * c + 0.34 * s2 + 0.02, (len / 2) * s2 + 0.34 * c + 0.02, floor, floor + 1.15, 'wood');
         }
         B.end();
       };
@@ -534,27 +621,34 @@
         P.box('plankIn', 0.42, 0.035, 0.4, 0, 0.45, 0, { bevel: 0.008 });
         for (const sx of [-1, 1]) { P.box('timberIn', 0.04, 0.45, 0.04, sx * 0.18, 0.225, 0.17); P.box('timberIn', 0.04, 0.95, 0.04, sx * 0.18, 0.475, -0.18); }
         for (const y of [0.66, 0.84]) P.box('plankIn', 0.4, 0.09, 0.025, 0, y, -0.18, { bevel: 0.006 });
+        const fy = z < -8.2 ? 0.4 : floor;                 // the chancel stands a step higher
         B.begin({ kind: 'wood', hp: 60, yaw: ry });
-        P.commit(B, { p: [x, floor + (tip ? 0.2 : 0), z], r: [tip, ry, 0], tint: 0.8 + rng() * 0.3 });
-        B.col(x - 0.24, floor, z - 0.24, x + 0.24, floor + (tip ? 0.5 : 0.95), z + 0.24, 'wood', { bulletOnly: true });
+        P.commit(B, { p: [x, fy + (tip ? 0.2 : 0), z], r: [tip, ry, 0], tint: 0.8 + rng() * 0.3 });
+        B.col(x - 0.24, fy, z - 0.24, x + 0.24, fy + (tip ? 0.5 : 0.95), z + 0.24, 'wood', { bulletOnly: true });
         B.end();
       };
-      chair(-4.6, -8.3, 0.4); chair(-3.9, -8.9, 0.9, 1.5); chair(4.7, -9.4, -0.5); chair(4.5, 1.2, -1.4, -1.5); chair(-4.7, 2.3, 1.6); chair(-4.5, 12.2, 2.4);
-      const rows = [3.4, 4.75, 6.1, 7.45, 8.8, 10.15];
+      chair(-4.6 - wide, -8.3, 0.4); chair(-3.9 - wide, -8.9, 0.9, 1.5); chair(4.7 + wide, -9.4, -0.5); chair(3.2, 0.9, -1.4, -1.5); chair(-3.6, 2.2, 1.6);
+      chair(-4.4, 11.2, 2.4); chair(5.9, 9.4, -1.2); chair(-6.0, 6.7, 1.5, 1.5);
+      // Two blocks of pews: a centre aisle three and a half metres wide between them and a side aisle against each
+      // wall, with open floor behind the last row, so there are three ways up the nave and room to cross between them.
+      const PEW = 3.0, PEWX = 1.75 + PEW / 2, rows = [3.6, 5.0, 6.4, 7.8];
       rows.forEach((z, i) => {
         for (const s of [-1, 1]) {
           const tint = 0.85 + rng() * 0.25;
-          if (s > 0 && i === 0) { pew(2.9, z - 0.3, 3.5, { ry: 0.5, rz: -1.45, y: 0.36, tint, low: true }); continue; }      // thrown on its back
-          if (s < 0 && i === 4) { pew(-2.5, z + 0.2, 3.5, { ry: -0.32, tint }); continue; }                              // shoved out of line
-          if (s > 0 && i === 3) continue;                                                                           // dragged to the door as a barricade
-          pew(s * 2.75, z, 3.5, { tint });
+          // The side aisle is the way in from the east door, and a brute is 1.1 m across: the two pews that face
+          // that door stand 0.6 m toward the centre aisle, which leaves two metres between their ends and the open leaf.
+          if (s > 0 && i === 0) { pew(2.5, z - 1.3, PEW, { ry: 0.35, rx: 1.45, y: 0.4, tint }); continue; }                 // thrown on its back
+          if (s > 0 && i === 1) { pew(PEWX - 0.62, z + 0.05, PEW, { ry: 0.07, tint }); continue; }                      // shoved aside by what came in at the door
+          if (s < 0 && i === 3) { pew(-3.1, z + 0.2, PEW, { ry: -0.32, tint }); continue; }                              // shoved out of line
+          if (s > 0 && i === 2) continue;                                                                           // dragged to the door as a barricade
+          pew(s * PEWX, z, PEW, { tint });
         }
       });
-      pew(2.6, 11.15, 3.5, { ry: 0.1, rz: 1.5, y: 0.34, tint: 0.9, low: true });
+      pew(5.0, 10.7, PEW, { ry: 0.05, rx: 1.45, y: 0.4, tint: 0.9 });                                               // and heaved aside again, on its back
 
       // ---------------------------------------------------------------- pulpit and font
       {
-        const px = 3.95, pz = -6.6;
+        const px = ihw - 1.1, pz = -6.6;
         B.begin({ kind: 'wood', hp: 700 });
         B.add('ashlarIn', kit.lathe([[0.42, 0], [0.42, 0.08], [0.22, 0.2], [0.18, 0.95], [0.3, 1.1], [0.62, 1.2]], 8), { p: [px, floor, pz] });
         for (let i = 0; i < 8; i++) {
@@ -568,7 +662,7 @@
         for (let i = 0; i < 4; i++) B.box('plankIn', 0.7, 0.05, 0.28, px - 0.75 - i * 0.26, floor + 0.28 + (3 - i) * 0.24, pz + 0.75, { bevel: 0.01 });
         B.colBox(px, pz, 0.72, 0.72, floor, floor + 2.3, 'wood');
         B.end();
-        const fx = -3.9, fz = 9.6;
+        const fx = -(ihw - 1.0), fz = 11.0;
         B.begin({ kind: 'stone', hp: 340 });
         B.add('ashlarIn', kit.lathe([[0.5, 0], [0.5, 0.1], [0.3, 0.2], [0.26, 0.62], [0.42, 0.74], [0.52, 0.8], [0.52, 1.02], [0.44, 1.02], [0.4, 0.86], [0.02, 0.84]], 8), { p: [fx, floor, fz], r: [0, PI / 8, 0] });
         B.add('lead', kit.cyl(0.4, 0.4, 0.02, 12), { p: [fx, floor + 0.93, fz] });
@@ -579,6 +673,7 @@
       // ---------------------------------------------------------------- chandeliers
       for (const z of [4.5, -4.5]) {
         const y = 5.0, R = 0.95;
+        const lamp = B.begin({ kind: 'wood', hp: 400, hangs: ['church-roof'], tag: 'fitting' }); lamp.flames = [];           // it comes down with the roof it hangs from
         B.add('ironIn', kit.tube(Array.from({ length: 16 }, (_, i) => [Math.cos(i / 16 * PI * 2) * R, y, z + Math.sin(i / 16 * PI * 2) * R]), 0.028, 5, true));
         B.add('ironIn', kit.tube(Array.from({ length: 12 }, (_, i) => [Math.cos(i / 12 * PI * 2) * 0.3, y + 0.5, z + Math.sin(i / 12 * PI * 2) * 0.3]), 0.02, 5, true));
         for (let i = 0; i < 8; i++) {
@@ -586,9 +681,10 @@
           B.rod('ironIn', [cx * R, y, z + cz * R], [cx * 0.3, y + 0.5, z + cz * 0.3], 0.012, 0.012, { seg: 4 });
           B.add('ironIn', kit.cyl(0.05, 0.03, 0.03, 6), { p: [cx * R, y + 0.02, z + cz * R] });
           B.add('wax', kit.cyl(0.018, 0.02, 0.17, 6), { p: [cx * R, y + 0.05, z + cz * R] });
-          info.flames.push([cx * R, y + 0.27, z + cz * R, 1]);
+          { const fl = [cx * R, y + 0.27, z + cz * R, 1]; info.flames.push(fl); lamp.flames.push(fl); }
         }
         for (let i = 0; i < 3; i++) { const a = (i / 3) * PI * 2; B.rod('ironIn', [Math.cos(a) * 0.3, y + 0.5, z + Math.sin(a) * 0.3], [0, eave - 0.3, z], 0.009, 0.009, { seg: 4 }); }
+        B.end();
         info.lights.push({ pos: [0, y - 0.25, z], color: 0xffa858, intensity: 46, dist: 15, flicker: 0.16, weight: 1.3 });
         info.halos.push([0, y + 0.2, z, 2.6]);
       }
@@ -602,20 +698,35 @@
           else B.add(key, kit.rock(s * 0.8, 10 + i, 0), { r: [rng() * 6, rng() * 6, 0], p: [x, y0 + s * 0.3 + (1 - d) * 0.25, z], tint: 0.8 + rng() * 0.35 });
         }
       };
-      rubble(3.3, -11.6, 2.2, 1.3, 46, 'rock', floor, 0.55);
-      rubble(3.4, -14.2, 2.6, 1.6, 54, 'rock', 0, 0.6);
-      B.col(1.9, 0, -15.2, 4.9, 0.3, -13.0, 'concrete'); B.col(2.3, floor, -12.0, 4.6, floor + 0.28, -10.9, 'concrete');
-      rubble(-3.0, -7.4, 1.9, 2.3, 40, 'slate', floor, 0.3);
+      // The fallen wall lies in heaps either side of the breach, inside and out, with the way through trodden
+      // down to small stones: the heaps are obstacles, the gap between them is not.
+      rubble(4.95, -11.4, 1.0, 0.85, 30, 'rock', 0.4, 0.5);
+      rubble(2.9, -11.5, 1.5, 0.8, 16, 'rock', 0.4, 0.1);
+      B.col(4.25, 0.4, -12.0, 5.75, 0.95, -10.75, 'concrete');
+      rubble(0.2, -14.2, 1.2, 1.1, 32, 'rock', 0, 0.6);
+      rubble(6.4, -14.6, 1.2, 1.3, 36, 'rock', 0, 0.6);
+      rubble(3.4, -14.1, 1.7, 1.2, 22, 'rock', 0, 0.12);
+      B.col(-0.6, 0, -15.0, 1.0, 0.6, -13.4, 'concrete'); B.col(5.65, 0, -15.6, 7.15, 0.6, -13.6, 'concrete');
+      const fall = -3.0 - wide / 2;
+      rubble(fall, -7.4, 1.9, 2.3, 40, 'slate', floor, 0.3);
       for (let i = 0; i < 9; i++) {
-        const x = -3.0 + (rng() - 0.5) * 3.2, z = -7.4 + (rng() - 0.5) * 4.2, len = 1.2 + rng() * 2.2;
+        const x = fall + (rng() - 0.5) * 3.2, z = -7.4 + (rng() - 0.5) * 4.2, len = 1.2 + rng() * 2.2;
         B.add('timberIn', kit.bevelBox(len, 0.12, 0.16, 0.01), { r: [rng() * 0.3 - 0.15, rng() * 6, rng() * 0.5 - 0.1], p: [x, floor + 0.12 + rng() * 0.35, z] });
       }
-      B.add('timberIn', kit.bevelBox(4.6, 0.26, 0.28, 0.02), { r: [0.0, 0.5, 0.62], p: [-3.3, floor + 1.45, -6.3] });
-      B.col(-4.1, floor, -8.4, -1.9, floor + 0.3, -6.4, 'wood');
+      B.add('timberIn', kit.bevelBox(4.6, 0.26, 0.28, 0.02), { r: [0.0, 0.5, 0.62], p: [fall - 0.3, floor + 1.45, -6.3] });
+      B.col(fall - 1.1, floor, -8.4, fall + 1.1, floor + 0.3, -6.4, 'wood');
 
-      info.interior = { min: new T.Vector3(-ihw, 0, -ihd), max: new T.Vector3(ihw, 11.2, ihd) };
+      info.interior = { min: new T.Vector3(-ihw, 0, -ihd), max: new T.Vector3(ihw, eave + rise - 2.2, ihd) };
       info.tower = { x: tx, z: tz, h: th };
-      info.doors = { south: [0, hd + 1.4], west: [-hw - 1.0, sideDoor.c], breach: [3.3, -hd - 1.6] };
+      info.doors = { south: [0, hd + 1.4], west: [-hw - 1.0, sideDoor.c], east: [hw + 1.0, eastDoor.c], breach: [(breachA + breachB) / 2, -hd - 1.6] };
+      // The ways in, as rectangles on the ground covering each threshold. The dead are each given one to make for
+      // (zombies.js), so a wave comes through all four instead of queueing at the nearest. `wide` takes the biggest of them.
+      info.entrances = [
+        { id: 'south', x0: -mh, x1: mh, z0: ihd - 0.4, z1: hd + 0.4, wide: true },
+        { id: 'west', x0: -hw - 0.4, x1: -ihw + 0.4, z0: sideDoor.c - sh, z1: sideDoor.c + sh },
+        { id: 'east', x0: ihw - 0.4, x1: hw + 0.4, z0: eastDoor.c - eh, z1: eastDoor.c + eh },
+        { id: 'north', x0: breachA, x1: breachB, z0: -hd - 0.4, z1: -ihd + 0.4, wide: true },
+      ];
       return info;
     },
   };

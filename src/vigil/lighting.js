@@ -46,6 +46,23 @@
         slots.push({ light, em: null, k: 0 });
       }
 
+      // ---- painted boards (yard.js `signs`): words on a plane of their own, unlit so that they read at night ----
+      for (const sg of (yard && yard.signs) || []) {
+        if (typeof document === 'undefined' || !document.createElement) break;
+        const cv = document.createElement('canvas'); cv.width = 1024; cv.height = Math.round(1024 * sg.h / sg.w);
+        const c2 = cv.getContext && cv.getContext('2d'); if (!c2) break;
+        c2.fillStyle = '#231710'; c2.fillRect(0, 0, cv.width, cv.height);
+        c2.strokeStyle = '#c9b48a'; c2.lineWidth = 10; c2.strokeRect(14, 14, cv.width - 28, cv.height - 28);
+        c2.fillStyle = '#e9dcb8'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+        let px = Math.round(cv.height * 0.62); c2.font = `900 ${px}px Impact, 'Arial Black', sans-serif`;
+        while (px > 20 && c2.measureText(sg.text).width > cv.width - 90) { px -= 4; c2.font = `900 ${px}px Impact, 'Arial Black', sans-serif`; }
+        c2.fillText(sg.text, cv.width / 2, cv.height / 2 + px * 0.04);
+        const tex = new T.CanvasTexture(cv); tex.colorSpace = T.SRGBColorSpace; tex.anisotropy = 4;
+        const board = new T.Mesh(new T.PlaneGeometry(sg.w, sg.h), new T.MeshBasicMaterial({ map: tex, color: 0x9a9a9a }));
+        board.name = 'vigil-sign'; board.position.set(sg.pos[0], sg.pos[1], sg.pos[2]); board.rotation.y = sg.ry || 0; board.castShadow = false;
+        root.add(board);
+      }
+
       // ---- flames: one instanced teardrop ----
       const flames = [...church.flames, ...((yard && yard.flames) || [])];
       const fg = kit.lathe([[0.001, 0], [0.014, 0.012], [0.02, 0.035], [0.014, 0.07], [0.004, 0.105], [0.001, 0.12]], 6);
@@ -130,7 +147,7 @@
             flood.intensity += (best.intensity - flood.intensity) * Math.min(1, dt * 6);
           } else flood.intensity = 0;
           for (let i = 0; i < flames.length; i++) {
-            const f = flames[i], k = f[3] || 1;
+            const f = flames[i], k = f[4] ? 0 : f[3] || 1;                        // (f[4]: what held it has broken, destruct.js)
             const w = 0.85 + 0.15 * Math.sin(t * 13 + i * 2.7), sway = Math.sin(t * 7.3 + i * 1.9) * 0.12;
             P.set(f[0], f[1] - 0.06 * k, f[2]); Q.setFromAxisAngle(S.set(1, 0, 0), sway); S.set(k * (1.1 - 0.2 * w), k * w * 1.25, k * (1.1 - 0.2 * w));
             M.compose(P, Q, S); fm.setMatrixAt(i, M);

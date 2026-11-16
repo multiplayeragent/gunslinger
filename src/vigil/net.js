@@ -23,6 +23,8 @@
   const v3 = (a) => (a ? new T.Vector3(a[0], a[1], a[2]) : null);
   const arr = (v) => (v ? [r2(v.x), r2(v.y), r2(v.z)] : null);
   const now = () => (g ? g.time.t : 0);
+  const CH = () => (window.GunslingerCharacters && window.GunslingerCharacters.pack ? window.GunslingerCharacters : null);
+  const worn = () => (CH() ? CH().worn() : '');
   const notify = () => { for (const f of listeners) { try { f(); } catch (e) { /* a listener's problem */ } } };
 
   const net = (V.net = {
@@ -47,7 +49,8 @@
       return clean(c || store(CODE_KEY) || 'OPEN', 12).toUpperCase() || 'OPEN';
     },
     newCode() { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c = ''; for (let i = 0; i < 5; i++) c += A[Math.floor(Math.random() * A.length)]; return c; },
-    link() { try { const u = new URL(location.href); u.search = ''; u.searchParams.set('map', 'vigil'); u.searchParams.set('room', net.code || net.defaultCode()); return u.toString(); } catch (e) { return ''; } },
+    // (the desktop build has no address of its own to send: it carries the hosted one, window.GS_DESKTOP.share)
+    link() { try { const u = new URL((window.GS_DESKTOP && window.GS_DESKTOP.share) || location.href); u.search = ''; u.searchParams.set('map', 'vigil'); u.searchParams.set('room', net.code || net.defaultCode()); return u.toString(); } catch (e) { return ''; } },
     onChange(fn) { listeners.push(fn); },
     count() { let n = net.online ? 1 : 0; for (const r of net.players.values()) if (r.in) n++; return n; },
     roster() {
@@ -68,6 +71,7 @@
     // the durable player behind this browser: needed for the leaderboard, and passed to the room
     async identity() {
       if (player || !net.available()) return player;
+      if (window.GunslingerOnline) { player = await window.GunslingerOnline.identity(); return player; }     // one identity for rooms, boards and progress
       try { const p = window.MP.auth({ key: cfg().key, apiUrl: cfg().apiUrl }); await p.getPlayer(); player = p; } catch (e) { console.warn('[net] no player identity: ' + (e && e.message)); }
       return player;
     },
@@ -283,14 +287,14 @@
   function tellSelf(st) {
     const p = g.player, S = V.director.S;
     const flags = (p.crouching ? 1 : 0) | (p.sprinting ? 2 : 0) | (S.down || !p.alive ? 8 : 0) | (net.away ? 16 : 0) | (S.torch ? 32 : 0);
-    const o = { n: net.name(), c: V.director.classId(), in: 1, x: r2(p.pos.x), y: r2(p.pos.y), z: r2(p.pos.z), yw: r2(p.yaw), pt: r2(p.pitch), f: flags, hp: Math.max(0, Math.round((p.health / (p.maxHealth || 100)) * 100)), k: S.kills || 0 };
+    const o = { n: net.name(), c: V.director.classId(), o: worn(), in: 1, x: r2(p.pos.x), y: r2(p.pos.y), z: r2(p.pos.z), yw: r2(p.yaw), pt: r2(p.pitch), f: flags, hp: Math.max(0, Math.round((p.health / (p.maxHealth || 100)) * 100)), k: S.kills || 0 };
     const s = JSON.stringify(o);
     if (s !== sentMe) { sentMe = s; try { mp.me.set(o); } catch (e) { /* next time */ } }
   }
   function lobbyTick(force) {
     tLobby = 1;
     if (!mp) return;
-    const o = { n: net.name(), c: V.director ? V.director.classId() : 'soldier', in: 0 }, s = JSON.stringify(o);
+    const o = { n: net.name(), c: V.director ? V.director.classId() : 'soldier', o: worn(), in: 0 }, s = JSON.stringify(o);
     if (force || s !== sentMe) { sentMe = s; try { mp.me.set(o); } catch (e) { /* next time */ } }
     notify();
   }
@@ -306,7 +310,7 @@
       const e = ents[sid]; let r = net.players.get(sid);
       if (!r) {
         r = { sid, name: 'Warden', cls: 'soldier', in: 0, hp: 100, flags: 0, kills: 0, pos: new T.Vector3(e.x || 0, e.y || 0, e.z || 0), yaw: 0, pitch: 0, speed: 0, phase: 0,
-          x0: 0, y0: 0, z0: 0, nx: e.x || 0, ny: e.y || 0, nz: e.z || 0, nyaw: e.yw || 0, it: 1, idur: 0.1, at: t, av: null, slot: 0, flash: 0,
+          x0: 0, y0: 0, z0: 0, nx: e.x || 0, ny: e.y || 0, nz: e.z || 0, nyaw: e.yw || 0, it: 1, idur: 0.1, at: t, av: null, slot: 0, flash: 0, vx: 0, vz: 0, outfit: '',
           get alive() { return !!this.in && this.hp > 0 && !(this.flags & 24); } };
         net.players.set(sid, r); changed = true;
       }
@@ -318,6 +322,7 @@
         r.name = name; r.in = inn; r.cls = e.c || 'soldier'; changed = true;
       }
       r.hp = e.hp == null ? 100 : +e.hp; r.flags = e.f | 0; r.kills = e.k | 0; r.pitch = +e.pt || 0;
+      const fit = clean(e.o, 24); if (fit !== r.outfit) { r.outfit = fit; if (r.av && r.av.actor) r.av.actor.wear(fit); }
       if (e.x !== r.nx || e.y !== r.ny || e.z !== r.nz || e.yw !== r.nyaw) {
         const far = Math.hypot((e.x || 0) - r.pos.x, (e.z || 0) - r.pos.z) > 6;
         r.x0 = far ? e.x : r.pos.x; r.y0 = far ? e.y : r.pos.y; r.z0 = far ? e.z : r.pos.z;
@@ -331,18 +336,16 @@
       r.it += dt;
       const a = Math.min(1, r.it / r.idur), x = r.x0 + (r.nx - r.x0) * a, y = r.y0 + (r.ny - r.y0) * a, z = r.z0 + (r.nz - r.z0) * a;
       r.speed += (Math.hypot(x - r.pos.x, z - r.pos.z) / Math.max(dt, 1e-3) - r.speed) * Math.min(1, dt * 10);
+      const kv = Math.min(1, dt * 10), idt = 1 / Math.max(dt, 1e-3); r.vx += ((x - r.pos.x) * idt - r.vx) * kv; r.vz += ((z - r.pos.z) * idt - r.vz) * kv;
       r.pos.set(x, y, z);
       let d = ((r.nyaw - r.yaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; r.yaw += d * Math.min(1, dt * 14);
-      if (net.online && r.in) { live.push(r); pose(r, dt); } else if (r.av) r.av.mesh.visible = false;
+      if (net.online && r.in) { live.push(r); pose(r, dt); } else if (r.av) { r.av.mesh.visible = false; if (r.av.actor) r.av.tag.visible = false; }
     }
     if (changed) notify();
   }
-  // another player's body: the watchman's, with a rifle and a name over it
-  function avatar(r) {
-    const bag = V.defenses && V.defenses.kitbag; if (!bag) return null;
-    const mat = bag.guardMat.clone(), tint = TINTS[(r.slot - 1) % TINTS.length]; mat.color.setRGB(2.3 * tint[0], 2.3 * tint[1], 2.3 * tint[2]);
-    const { mesh, bones } = V.figure.rig(T, bag.guardGeo, mat), B = {}; for (const k in V.figure.BI) B[k] = bones[V.figure.BI[k]];
-    const rifle = bag.rifle(); rifle.position.set(-0.11, 0.1, 0.36); B.chest.add(rifle);
+  // another player's body: a soldier in the outfit that player wears (src/characters.js), with a name over it;
+  // the watchman's body stands in when the soldiers are not loaded
+  function nameTag(r) {
     const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
     const c = cv.getContext('2d');
     if (c && c.fillText) {
@@ -352,13 +355,37 @@
     }
     const tex = new T.CanvasTexture(cv); tex.colorSpace = T.SRGBColorSpace;
     const tag = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false }));
-    tag.scale.set(1.0, 0.25, 1); tag.position.set(0, 2.12, 0); mesh.add(tag);
+    tag.scale.set(1.0, 0.25, 1);
+    return { tag, tex };
+  }
+  function avatar(r) {
+    const chars = CH();
+    if (chars) {
+      const actor = chars.create({ outfit: r.outfit, band: TINTS[(r.slot - 1) % TINTS.length] });
+      if (actor) { const { tag, tex } = nameTag(r); root.add(tag); return { actor, tag, tex, mesh: actor.root }; }
+    }
+    const bag = V.defenses && V.defenses.kitbag; if (!bag) return null;
+    const mat = bag.guardMat.clone(), tint = TINTS[(r.slot - 1) % TINTS.length]; mat.color.setRGB(2.3 * tint[0], 2.3 * tint[1], 2.3 * tint[2]);
+    const { mesh, bones } = V.figure.rig(T, bag.guardGeo, mat), B = {}; for (const k in V.figure.BI) B[k] = bones[V.figure.BI[k]];
+    const rifle = bag.rifle(); rifle.position.set(-0.11, 0.1, 0.36); B.chest.add(rifle);
+    const { tag, tex } = nameTag(r); tag.position.set(0, 2.12, 0); mesh.add(tag);
     root.add(mesh);
     return { mesh, bones: B, tag, mat, tex };
   }
-  function dropAvatar(r) { if (!r.av) return; root.remove(r.av.mesh); r.av.mat.dispose(); r.av.tex.dispose(); r.av.tag.material.dispose(); r.av = null; }
+  function dropAvatar(r) {
+    if (!r.av) return;
+    if (r.av.actor) { r.av.actor.dispose(); root.remove(r.av.tag); } else { root.remove(r.av.mesh); r.av.mat.dispose(); }
+    r.av.tex.dispose(); r.av.tag.material.dispose(); r.av = null;
+  }
   function pose(r, dt) {
     if (!r.av) { r.av = avatar(r); if (!r.av) return; }
+    if (r.av.actor) {
+      const a = r.av.actor, down = !!(r.flags & 8);
+      a.show(true).place(r.pos.x, r.pos.y, r.pos.z, r.yaw).state({ vx: r.vx, vz: r.vz, pitch: Math.max(-1.2, Math.min(1.2, r.pitch)), crouch: r.flags & 1 ? 1 : 0, sprint: !!(r.flags & 2), aiming: !(r.flags & 2), alive: !down });
+      if (r.flash > 0) { a.fired(); r.flash = 0; }
+      const hp = a.head(); r.av.tag.position.set(hp.x, hp.y + 0.36, hp.z); r.av.tag.visible = !down;
+      return;
+    }
     const b = r.av.bones, crouch = r.flags & 1, down = r.flags & 8, sp = r.speed, wb = Math.min(1, sp / 1.2), amp = r.flags & 2 ? 0.8 : 0.55;
     r.phase += dt * sp * 4.2;
     const s = Math.sin(r.phase), c = Math.cos(r.phase), pt = Math.max(-1.2, Math.min(1.2, r.pitch));
@@ -389,6 +416,7 @@
     on('zk', (d) => { if (net.host || !d) return; Z().netKill(d, d.by === net.id ? 'player' : d.by === 'd' && d.ow === net.id ? 'defense' : 'remote'); });
     on('ph', (d) => { if (d && d.to === net.id) D().netHurt(d); });
     on('sp', (a) => { if (!net.host && Array.isArray(a)) Z().spitVisual(a); });
+    on('zf', (a) => { if (!net.host && Array.isArray(a) && Z().fxVisual) Z().fxVisual(a); });
     on('sh', (a, from) => {
       if (!Array.isArray(a)) return;
       const o = new T.Vector3(a[0], a[1], a[2]), d = new T.Vector3(a[3], a[4], a[5]).normalize();
@@ -397,11 +425,12 @@
       V.audio.play('vg_shot', { pos: o, gain: 0.8 });
       const r = net.players.get(from); if (r) r.flash = 1;
     });
-    on('ds', (list) => { if (net.host || !Array.isArray(list)) return; for (const a of list) { const f = new T.Vector3(a[0], a[1], a[2]); try { if (g.fx.tracer) g.fx.tracer(f, new T.Vector3(a[3], a[4], a[5])); } catch (e) { /* optional */ } V.audio.play('vg_shot', { pos: f, gain: a[6] ? 0.5 : 0.75 }); } });
+    on('ds', (list) => { if (net.host || !Array.isArray(list)) return; for (const a of list) { const f = new T.Vector3(a[0], a[1], a[2]); const to = new T.Vector3(a[3], a[4], a[5]); try { if (g.fx.tracer) g.fx.tracer(f, to); } catch (e) { /* optional */ } V.audio.play('vg_shot', { pos: f, gain: a[6] ? 0.5 : 0.75 }); if (!a[6] && V.defenses.shotSeen) V.defenses.shotSeen(f, to); } });
     on('bm', (a, from) => { if (Array.isArray(a)) V.defenses.explode(new T.Vector3(a[0], a[1], a[2]), a[3], a[4], a[5], from); });
     on('fl', (a) => { if (Array.isArray(a)) V.defenses.flareAt(new T.Vector3(a[0], a[1], a[2]), a[3], true); });
     on('rq', (d, from) => { if (net.host && d) D().hostRequest(d.op, d.d, from); });
     on('wv', (d) => { if (!net.host && d) D().netWave(d); });
+    on('tm', (d) => { if (!net.host && d && V.wild) V.wild.netTotem(d); });
     on('ob', (a) => { if (!net.host && V.destruct && Array.isArray(a)) V.destruct.netApply(a); });
     on('oh', (a) => { if (net.host && V.destruct && Array.isArray(a)) V.destruct.netHit(a); });
   }

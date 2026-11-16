@@ -31,3 +31,25 @@ test('dressing consumes one charge only after three stationary seconds; damage i
  g.time.t+=2;g.render.frame(1);g.render.frame(1);g.render.frame(1);
  assert.equal(g.player.health,85);assert.equal(g.realism.bandages,1);
 });
+
+test('a dash lunges the way you move, level, on the ground or in the air, and has to recover before the next',()=>{
+ const {g,keydown}=harness(),p=g.player;
+ p.vel={x:0,y:-4,z:0};p.yaw=0;g.input.move={x:0,y:1};
+ keydown('GsDash');p.update(1/60);
+ assert.ok(Math.abs(p.vel.z+g.dash.speed)<1e-9&&Math.abs(p.vel.x)<1e-9,'forward, at the dash\'s speed');assert.equal(p.vel.y,0,'falling stops while it lasts');
+ // a second press during it, or before it has recovered, does nothing
+ keydown('GsDash');let t=1/60;while(t<g.dash.time+0.02){p.vel.y=-2;p.update(1/60);t+=1/60;}
+ assert.ok(Math.abs(Math.hypot(p.vel.x,p.vel.z)-g.dash.keep)<1e-9,'let go at a sprint\'s pace, not left sliding');
+ p.vel.x=p.vel.z=0;p.vel.y=-2;keydown('GsDash');p.update(1/60);assert.equal(p.vel.z,0,'not again yet');assert.equal(p.vel.y,-2);
+ while(t<g.dash.time+g.dash.cooldown+0.05){p.update(1/60);t+=1/60;}
+ // sideways, and turned: the stick's right is the world's -z when facing +x... (yaw a quarter turn)
+ g.input.move={x:1,y:0};p.yaw=0;keydown('GsDash');p.update(1/60);assert.ok(Math.abs(p.vel.x-g.dash.speed)<1e-9&&Math.abs(p.vel.z)<1e-9,'to the right');
+ for(let i=0;i<90;i++)p.update(1/60);
+ // standing still it goes the way you face; not while paused, not when down
+ g.input.move={x:0,y:0};p.yaw=Math.PI/2;p.vel.x=p.vel.z=0;keydown('GsDash');p.update(1/60);assert.ok(Math.abs(p.vel.x+g.dash.speed)<1e-6&&Math.abs(p.vel.z)<1e-6,'the way you face');
+ for(let i=0;i<90;i++)p.update(1/60);
+ p.vel.x=p.vel.z=0;g.game.state='paused';keydown('GsDash');p.update(1/60);assert.equal(Math.hypot(p.vel.x,p.vel.z),0);
+ g.game.state='playing';p.alive=false;keydown('GsDash');p.update(1/60);assert.equal(Math.hypot(p.vel.x,p.vel.z),0);
+ p.alive=true;g.dashOk=()=>false;keydown('GsDash');p.update(1/60);assert.equal(Math.hypot(p.vel.x,p.vel.z),0,'a map may refuse it');
+ g.dashOk=null;keydown('GsDash');p.update(1/60);assert.ok(Math.hypot(p.vel.x,p.vel.z)>18);
+});

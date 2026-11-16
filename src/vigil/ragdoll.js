@@ -77,7 +77,7 @@
         // from here the mesh stands at the origin and the hips carry the body
         mesh.position.set(0, 0, 0); mesh.rotation.set(0, 0, 0); mesh.scale.setScalar(s);
         B.jaw.rotation.x = 0.5;
-        const r = { z, P, O, rad, im, sticks, keep, W0, d0, F0i, s, still: 0, asleep: false, age: 0, life: 16 + Math.random() * 6, sink: 0, done: false };
+        const r = { z, P, O, rad, im, sticks, keep, W0, d0, F0i, s, still: 0, asleep: false, age: 0, life: (V.DEBRIS && V.DEBRIS.life) || 15, sink: 0, done: false };
         list.push(r);
         if (list.length > MAXR) { const old = list.find((o) => o.asleep && o.life > 0); if (old) old.life = 0; }
         apply(r);

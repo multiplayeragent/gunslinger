@@ -2,12 +2,15 @@
 // them, with the real key from mp.config.local.js), the stylesheets are inlined, and the scanned textures are
 // re-encoded as WebP, which is most of the saving. node tools/build-host.mjs   (needs `sharp` for the textures;
 // without it they are copied as they are and the build is about four times the size)
+// `--out <dir>` (or GS_HOST_OUT) builds somewhere other than dist/: tools/build-desktop.mjs uses it.
 import { readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, statSync, copyFileSync, existsSync } from 'node:fs';
-import { join, dirname, relative } from 'node:path';
+import { join, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..'), out = join(root, 'dist');
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const outArg = process.argv.includes('--out') ? process.argv[process.argv.indexOf('--out') + 1] : process.env.GS_HOST_OUT;
+const out = outArg ? resolve(outArg) : join(root, 'dist');
 let sharp = null;
 try { sharp = createRequire(import.meta.url)('sharp'); } catch { console.warn('sharp not found: textures are copied, not compressed'); }
 
@@ -18,15 +21,15 @@ let html = readFileSync(join(root, 'index.html'), 'utf8');
 const parts = [];
 html = html.replace(/<script src="([^"]+)"><\/script>\r?\n?/g, (tag, src) => {
   if (/^https?:/.test(src) || src.startsWith('vendor/')) return tag;
-  const file = join(root, src);
+  const file = join(root, src.split('?')[0]);                  // some tags carry a cache-busting ?v=
   if (!existsSync(file)) { console.warn('skipped (missing): ' + src); return ''; }
   parts.push(`// ---- ${src}\n` + readFileSync(file, 'utf8'));
   return '';
 });
 let app = parts.join('\n;\n');
 if (/pk_REPLACE_ME/.test(app) && !/pk_live_/.test(app)) console.warn('no real key (mp.config.local.js): the hosted build would be single-player only');
-html = html.replace('<script src="vendor/gunslinger-engine.js"></script>', '<script src="app.js"></script><script src="vendor/gunslinger-engine.js"></script>');
-html = html.replace(/<link rel="stylesheet" href="(src\/[^"]+)">/g, (tag, href) => `<style>${readFileSync(join(root, href), 'utf8')}</style>`);
+html = html.replace(/<script src="(vendor\/gunslinger-engine\.js[^"]*)"><\/script>/, '<script src="app.js"></script><script src="$1"></script>');
+html = html.replace(/<link rel="stylesheet" href="(src\/[^"]+)">/g, (tag, href) => `<style>${readFileSync(join(root, href.split('?')[0]), 'utf8')}</style>`);
 
 // textures: WebP in place of JPEG and PNG, normals kept a little finer than colour
 const walk = (dir) => readdirSync(dir).flatMap((f) => { const p = join(dir, f); return statSync(p).isDirectory() ? walk(p) : [p]; });
@@ -43,11 +46,12 @@ for (const file of walk(join(root, 'assets'))) {
 await Promise.all(jobs);
 
 mkdirSync(join(out, 'vendor'), { recursive: true });
-copyFileSync(join(root, 'vendor/gunslinger-engine.js'), join(out, 'vendor/gunslinger-engine.js'));
+// the engine and the soldier code stay their own files, as the page loads them
+for (const m of html.matchAll(/<script src="(vendor\/[^"?]+)[^"]*"><\/script>/g)) copyFileSync(join(root, m[1]), join(out, m[1]));
 writeFileSync(join(out, 'app.js'), app);
 writeFileSync(join(out, 'index.html'), html);
 
 const files = walk(out).map((f) => ({ path: relative(out, f).replace(/\\/g, '/'), size: statSync(f).size }));
 writeFileSync(join(out, 'files.json'), JSON.stringify(files.filter((f) => f.path !== 'files.json'), null, 1));
 const total = files.reduce((n, f) => n + f.size, 0);
-console.log(`${files.length - 1} files, ${(total / 1048576).toFixed(1)} MB in dist/`);
+console.log(`${files.length - 1} files, ${(total / 1048576).toFixed(1)} MB in ${outArg ? out : 'dist/'}`);

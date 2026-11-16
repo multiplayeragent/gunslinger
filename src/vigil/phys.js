@@ -118,7 +118,7 @@
           const b = { mesh: o.mesh, pos: o.mesh.position, quat: o.mesh.quaternion, vel: (o.vel || new T.Vector3()).clone(), ang: (o.ang || new T.Vector3()).clone(), half: h, invM: 1 / m,
             invI: new T.Vector3(3 / (m * (h.y * h.y + h.z * h.z)), 3 / (m * (h.x * h.x + h.z * h.z)), 3 / (m * (h.x * h.x + h.y * h.y))),
             bounce: o.bounce == null ? 0.25 : o.bounce, friction: o.friction == null ? 0.7 : o.friction, life: o.life == null ? 14 : o.life, keep: o.life === Infinity, onRest: o.onRest || null, onHit: o.onHit || null,
-            still: 0, asleep: false, age: 0, hitT: 0, push: 0, pushN: new T.Vector3(), sink: 0, data: o.data || null };
+            still: 0, asleep: false, age: 0, sinceBirth: !!o.sinceBirth, hitT: 0, push: 0, pushN: new T.Vector3(), sink: 0, data: o.data || null };
           if (o.pos) b.pos.copy(o.pos); if (o.quat) b.quat.copy(o.quat);
           if (!b.mesh.parent) root.add(b.mesh);
           bodies.push(b);
@@ -158,6 +158,7 @@
             if (touching && b.vel.lengthSq() < 0.03 && b.ang.lengthSq() < 0.5) b.still += dt; else b.still = 0;
             if (b.still > 0.35 || b.age > 9 || b.pos.y < -3) {
               b.asleep = true; b.vel.set(0, 0, 0); b.ang.set(0, 0, 0);
+              if (b.sinceBirth) b.life = Math.max(0.5, b.life - b.age);            // its time is counted from when it broke off, not from now
               if (b.onRest) { const keep = b.onRest(b); if (keep === false) { api.drop(b); continue; } }
             }
           }

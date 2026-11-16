@@ -280,7 +280,84 @@
     col(x0, y0, z0, x1, y1, z1, surface = 'concrete', o = {}) { const b = this.g.physics.addBox([x0, y0, z0], [x1, y1, z1], { surface, ...o }); if (this.cap) this.cap.boxes.push(b); return b; }
     // o: { kind: 'stone' | 'wood', hp, yaw, skip: [material keys that stay static] }. Everything added until end() can be broken.
     begin(o) { this.cap = { kind: 'stone', hp: 100, yaw: 0, ...o, items: [], boxes: [] }; return this.cap; }
-    end() { const c = this.cap; this.cap = null; if (c && c.items.length && c.boxes.length) (this.objects || (this.objects = [])).push(c); else if (c) for (const it of c.items) this.add(it.key, it.geo, { uv: 'keep', cast: it.cast }); return c; }
+    // (an object that `rests` on others, or `hangs` from them, needs no collider of its own: it comes down with them)
+    end() { const c = this.cap; this.cap = null; if (c && c.items.length && (c.boxes.length || c.rests || c.hangs)) (this.objects || (this.objects = [])).push(c); else if (c) for (const it of c.items) this.add(it.key, it.geo, { uv: 'keep', cast: it.cast }); return c; }
+    /* Ends a capture begun with begin() by cutting it into separate breakable objects along planes: o.xs and o.zs
+       (upright, across x and z) and o.ys (level). Geometry and colliders are cut at the same planes, and every cell
+       that holds geometry becomes one object with the capture's kind, hp and flags. A building is made this way:
+       a wall of six bays, each of which can be brought down on its own.
+       o.capKeys: materials whose cut ends are closed with a face of o.capKey (a wall built as two skins would show
+       hollow where its neighbour has gone). o.restsAbove: what the cells above the lowest level rest on. */
+    endGrid(o = {}) {
+      const c = this.cap; this.cap = null;
+      if (!c) return [];
+      const TH = T(), slice = V.destructs.slice, asc = (a, b) => a - b, phys = this.g.physics;
+      const axes = [['x', (o.xs || []).slice().sort(asc), new TH.Vector3(1, 0, 0)], ['y', (o.ys || []).slice().sort(asc), new TH.Vector3(0, 1, 0)], ['z', (o.zs || []).slice().sort(asc), new TH.Vector3(0, 0, 1)]];
+      let parts = c.items.map((it) => ({ key: it.key, geo: it.geo, cast: it.cast, cell: [0, 0, 0] }));
+      let boxes = c.boxes.map((b) => ({ min: b.min.clone(), max: b.max.clone(), surface: b.surface, noNav: b.noNav, bulletOnly: b.bulletOnly, cell: [0, 0, 0] }));
+      for (const b of c.boxes) phys.removeBox(b);
+      axes.forEach(([name, cuts, n], ai) => cuts.forEach((d, ci) => {
+        const next = [];
+        for (const p of parts) {
+          if (p.cell[ai] !== ci) { next.push(p); continue; }
+          p.geo.computeBoundingBox();
+          const lo = p.geo.boundingBox.min[name], hi = p.geo.boundingBox.max[name];
+          if (hi <= d + 1e-3) { next.push(p); continue; }
+          if (lo >= d - 1e-3) { p.cell[ai] = ci + 1; next.push(p); continue; }
+          const [front, back] = slice(TH, p.geo, n, d, 1);
+          if (back) next.push({ key: p.key, geo: back, cast: p.cast, cell: p.cell.slice() });
+          if (front) { const cell = p.cell.slice(); cell[ai] = ci + 1; next.push({ key: p.key, geo: front, cast: p.cast, cell }); }
+        }
+        parts = next;
+        const nb = [];
+        for (const b of boxes) {
+          if (b.cell[ai] !== ci || b.max[name] <= d + 0.02) { nb.push(b); continue; }
+          if (b.min[name] >= d - 0.02) { b.cell[ai] = ci + 1; nb.push(b); continue; }
+          const up = { ...b, min: b.min.clone(), max: b.max.clone(), cell: b.cell.slice() };
+          up.min[name] = d; up.cell[ai] = ci + 1; b.max = b.max.clone(); b.max[name] = d;
+          nb.push(b, up);
+        }
+        boxes = nb;
+      }));
+      const cells = new Map(), cellOf = (cell) => { const k = cell.join(','); let q = cells.get(k); if (!q) cells.set(k, (q = { cell: cell.slice(), items: [], boxes: [] })); return q; };
+      for (const p of parts) cellOf(p.cell).items.push({ key: p.key, geo: p.geo, cast: p.cast });
+      for (const b of boxes) cellOf(b.cell).boxes.push(b);
+      // the cut ends of the walls: one face over what the named materials reach on each upright plane of a cell
+      if (o.capKeys) {
+        for (const q of cells.values()) for (const ai of [0, 2]) {
+          const [name, cuts] = axes[ai], other = ai === 0 ? 'z' : 'x', ia = ai, io = ai === 0 ? 2 : 0;
+          for (const [d, sign] of [[cuts[q.cell[ai] - 1], -1], [cuts[q.cell[ai]], 1]]) {
+            if (d == null) continue;
+            let a0 = 1e9, a1 = -1e9, y0 = 1e9, y1 = -1e9, n = 0;
+            for (const it of q.items) {
+              if (!o.capKeys.includes(it.key)) continue;
+              const P = it.geo.attributes.position.array;
+              for (let i = 0; i < P.length; i += 3) if (Math.abs(P[i + ia] - d) < 2e-3) { n++; if (P[i + io] < a0) a0 = P[i + io]; if (P[i + io] > a1) a1 = P[i + io]; if (P[i + 1] < y0) y0 = P[i + 1]; if (P[i + 1] > y1) y1 = P[i + 1]; }
+            }
+            if (n < 3 || a1 - a0 < 0.05 || y1 - y0 < 0.05) continue;
+            const at = (a, y) => (name === 'x' ? [d, y, a] : [a, y, d]);
+            // wound to face outward from the cell: along +axis for the upper plane, -axis for the lower
+            const flip = (name === 'x') === (sign > 0), A = at(a0, y0), Bq = at(a1, y0), C = at(a1, y1), D = at(a0, y1);
+            const tri = flip ? [A, C, Bq, A, D, C] : [A, Bq, C, A, C, D];
+            const geo = new TH.BufferGeometry();
+            geo.setAttribute('position', new TH.BufferAttribute(new Float32Array(tri.flat()), 3));
+            const nor = new Float32Array(18); for (let i = 0; i < 6; i++) nor[i * 3 + ia] = sign;
+            geo.setAttribute('normal', new TH.BufferAttribute(nor, 3));
+            kit.boxUV(geo);
+            q.items.push({ key: o.capKey || o.capKeys[0], geo, cast: false });
+          }
+        }
+      }
+      const made = [], box = (b) => phys.addBox(b.min, b.max, { surface: b.surface, noNav: b.noNav, bulletOnly: b.bulletOnly });
+      for (const q of cells.values()) {
+        if (!q.items.length) { q.boxes.forEach(box); continue; }                       // a collider with nothing to show stays as it was
+        const rests = o.restsAbove && q.cell[1] > 0 ? o.restsAbove : c.rests;
+        if (!q.boxes.length && !rests) { for (const it of q.items) this.add(it.key, it.geo, { uv: 'keep', cast: it.cast }); continue; }
+        const obj = { ...c, items: q.items, boxes: q.boxes.map(box), rests, cell: q.cell };
+        (this.objects || (this.objects = [])).push(obj); made.push(obj);
+      }
+      return made;
+    }
     // Collider for a box centred at x, z standing on y0.
     colBox(x, z, hw, hd, y0, y1, surface = 'concrete', o = {}) { return this.col(x - hw, y0, z - hd, x + hw, y1, z + hd, surface, o); }
     count() { let n = 0; for (const b of this.buckets.values()) for (const g of b.list) n += g.attributes.position.count / 3; return Math.round(n); }

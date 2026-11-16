@@ -8,3 +8,4 @@ node_modules/
 mp.config.local.js
 .notes/
 dist/
+dist-desktop/

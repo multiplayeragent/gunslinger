@@ -38,6 +38,10 @@
         playerStart: { pos: new T.Vector3(0.6, 0, 24.5), yaw: 0 },
         objectives: [], enemySpawns: [], zones: [], coverPoints: [], explosives: [],
         interiorBoxes: [church.interior],
+        // The engine captures the nave's reflection probe here. Its default, the middle of the interior box, is
+        // inside the crystal, which turned every interior surface cyan; down the nave it sees pews, walls and
+        // candles, with the crystal as one bright source among them.
+        interiorProbe: new T.Vector3(0, 2.3, 7.5),
         skylights: church.skylights,
         cinematicPath: [
           { pos: [3, 1.6, 44], look: [0, 6, 12] },

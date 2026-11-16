@@ -23,7 +23,7 @@
 .vg-chip b { font: 500 11px/1 var(--f-mono); letter-spacing: 0; color: var(--bone); margin-left: 2px; text-transform: none; }
 .vg-chip.off { border-left-color: var(--bone-faint); color: var(--bone-dim); } .vg-chip.off b { color: var(--bone-dim); }
 .vg-chip.live { border-left-color: var(--cry); color: var(--cry); }
-.vg-kits { position: absolute; right: var(--gr); bottom: calc(150px + var(--sab)); display: grid; gap: 4px; justify-items: end; }
+.vg-kits { position: absolute; right: var(--gr); bottom: calc(262px + var(--sab)); display: grid; gap: 4px; justify-items: end; }
 .vg-kit { font: 500 11px/1 var(--f-label); letter-spacing: .16em; text-transform: uppercase; color: var(--bone-dim); }
 .vg-kit kbd { margin-right: 7px; } .vg-kit.on { color: var(--bone); } .vg-kit.on kbd { border-color: var(--signal); color: var(--signal); }
 .vg-toasts { position: absolute; right: var(--gr); top: calc(86px + var(--sat)); display: grid; gap: 5px; justify-items: end; max-width: min(360px, 44vw); }
@@ -62,6 +62,11 @@ body.vg-shop-open .menu .m-screen, body.vg-shop-open .menu .m-veil { display: no
 /* ---- title: map, mode and class pickers ---- */
 .m-pick .seg button[disabled] { opacity: .45; cursor: default; }
 .gs-loading { position: absolute; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: var(--ink); color: var(--steel); font: 400 12px/1 var(--f-mono); letter-spacing: .18em; text-transform: uppercase; }
+/* the warm-up carries the boot screen on: its mark, what is being done, how far along */
+.gs-loading.vg-warm { flex-direction: column; gap: 14px; z-index: 98; }
+.vg-warm .boot-sub { min-height: 1em; }
+.vg-warm .boot-bar i { transition: width .12s linear; }
+.vg-warm-n { font-size: 11px; color: var(--steel); opacity: .6; letter-spacing: .14em; }
 body[data-map="vigil"] { --signal: #9fd8ff; --signal-hot: #c4e8ff; }
 body[data-map="vigil"] .vg-cash, body[data-map="vigil"] #vg-shopcash, body[data-map="vigil"] .vg-card .cp, body[data-map="vigil"] .vg-card .cs { color: #ffb347; }
 /* four picker rows need the room the harbor's two leave spare */
@@ -103,3 +108,116 @@ body[data-map="vigil"] .m-pick-note { min-height: 30px; }
   body[data-map="vigil"] .m-premise, body[data-map="vigil"] .m-pick-note { display: none; }
   body[data-map="vigil"] .m-pick { gap: 6px 14px; }
 }
+
+/* ---- money rising off a kill: labels pinned to where the body fell (ui.js places and fades them) ---- */
+.vg-pops { position: absolute; inset: 0; overflow: hidden; }
+.vg-pop { position: absolute; left: 0; top: 0; opacity: 0; will-change: transform, opacity; white-space: nowrap; text-align: center; font: 700 21px/1 var(--f-display); letter-spacing: .05em; color: #ffb347; font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, .9), 0 0 6px rgba(0, 0, 0, .8), 0 0 14px rgba(255, 150, 40, .35); }
+.vg-pop.head { color: #ffe08a; font-size: 24px; }
+.vg-pop.head::after { content: 'Headshot'; display: block; margin-top: 3px; font: 600 9px/1 var(--f-label); letter-spacing: .24em; text-transform: uppercase; color: rgba(255, 224, 138, .85); }
+.vg-pop.def { color: rgba(255, 179, 71, .74); font-size: 17px; }
+.vg-cash { transform-origin: left center; }
+.vg-cash.gain { animation: vg-gain .32s ease-out; }
+@keyframes vg-gain { 0% { transform: scale(1.14); filter: brightness(1.5); } 100% { transform: none; filter: none; } }
+
+/* ---- being hit: red closing in from the edges. ui.js sets how far in it reaches (--r), how strong it is
+   (opacity) and which side it is thickest on (--cx, --cy) ---- */
+.vg-hurt { position: absolute; inset: 0; opacity: 0; --r: 74%; --cx: 50%; --cy: 50%;
+  background: radial-gradient(ellipse 78% 74% at var(--cx) var(--cy), rgba(120, 0, 0, 0) var(--r), rgba(150, 8, 6, .5) calc(var(--r) + 20%), rgba(96, 0, 0, .94) 100%); }
+@media (prefers-reduced-motion: reduce) { .vg-cash.gain { animation: none; } }
+
+/* ---- lifeforce: the count under the cash, and the armory's Skills tab ---- */
+.vg-wisp { display: inline-block; width: .82em; height: .82em; border-radius: 50%; vertical-align: -.06em; margin-right: .42em; background: radial-gradient(circle, #f2fff8 0, #6dffb6 34%, rgba(60, 255, 160, .35) 62%, rgba(60, 255, 160, 0) 74%); box-shadow: 0 0 .7em rgba(70, 255, 165, .65); }
+.vg-life { position: absolute; left: var(--gl); top: calc(146px + var(--sat)); padding-left: 14px; display: flex; align-items: baseline; font: 700 20px/1 var(--f-display); letter-spacing: .05em; color: #7dffbf; font-variant-numeric: tabular-nums; transform-origin: left center; text-shadow: 0 1px 0 rgba(0, 0, 0, .8); }
+.vg-life span { margin-left: 9px; font: 600 10px/1 var(--f-label); letter-spacing: .22em; text-transform: uppercase; color: rgba(125, 255, 191, .7); }
+.vg-life.none { display: none; }
+.vg-life.gain { animation: vg-gain .36s ease-out; }
+@media (max-width: 760px) { .vg-life { top: calc(182px + var(--sat)); font-size: 17px; } }
+#vg-shoplife-wrap { margin-left: auto; font: 700 24px/1 var(--f-display); letter-spacing: .05em; color: #7dffbf; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#vg-shoplife-wrap + #vg-shopcash { margin-left: 0; }
+#vg-grid.tree { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 16px; align-items: start; }
+.vg-branch { display: grid; gap: 0; }
+.vg-branch h3 { margin: 0 0 10px; padding-bottom: 7px; border-bottom: 1px solid var(--line); font: 600 13px/1 var(--f-label); letter-spacing: .26em; text-transform: uppercase; color: var(--steel); }
+.vg-node { position: relative; display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; align-items: center; text-align: left; margin-bottom: 14px; padding: 9px 12px 8px; background: rgba(232, 228, 218, .04); border: 1px solid rgba(232, 228, 218, .28); border-left: 3px solid rgba(125, 255, 191, .55); border-radius: 0; color: var(--bone); cursor: pointer; }
+/* the line down to the skill that needs this one */
+.vg-node::after { content: ''; position: absolute; left: 22px; top: 100%; width: 2px; height: 14px; background: rgba(232, 228, 218, .22); }
+.vg-branch .vg-node:last-child { margin-bottom: 0; } .vg-branch .vg-node:last-child::after { display: none; }
+.vg-node:hover { border-color: var(--bone); border-left-color: #7dffbf; background: rgba(232, 228, 218, .1); }
+.vg-node:focus-visible { outline: 2px solid #7dffbf; outline-offset: 2px; }
+.vg-node .nn { font: 600 14px/1.1 var(--f-label); letter-spacing: .1em; text-transform: uppercase; }
+.vg-node .np { display: flex; gap: 4px; justify-self: end; }
+.vg-node .np i { width: 9px; height: 9px; border: 1px solid rgba(232, 228, 218, .5); transform: rotate(45deg); }
+.vg-node .np i.on { background: #7dffbf; border-color: #7dffbf; box-shadow: 0 0 6px rgba(70, 255, 165, .7); }
+.vg-node .np i.kept { background: #f6c445; border-color: #f6c445; }
+.vg-node .nd { grid-column: 1; font: 400 11.5px/1.35 var(--f-label); letter-spacing: .02em; color: var(--bone-dim); }
+.vg-node .nc { justify-self: end; align-self: end; font: 700 17px/1 var(--f-display); letter-spacing: .05em; color: #7dffbf; white-space: nowrap; }
+.vg-node.poor { opacity: .62; } .vg-node.poor .nc { color: var(--alarm); }
+.vg-node.locked { opacity: .42; border-left-color: rgba(232, 228, 218, .28); cursor: default; } .vg-node.locked .nc { font: 600 10px/1.2 var(--f-label); letter-spacing: .14em; text-transform: uppercase; color: var(--steel); white-space: normal; text-align: right; max-width: 9em; }
+.vg-node.done { border-left-color: #f6c445; cursor: default; } .vg-node.done .nc { font: 600 11px/1 var(--f-label); letter-spacing: .2em; text-transform: uppercase; color: var(--steel); }
+.vg-trade { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); }
+.vg-trade h3 { margin: 0; font: 600 13px/1 var(--f-label); letter-spacing: .26em; text-transform: uppercase; color: var(--steel); }
+.vg-trade p { flex: 1 1 220px; margin: 0; font: 400 12px/1.35 var(--f-label); letter-spacing: .02em; color: var(--bone-dim); }
+.vg-trade-b { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(232, 228, 218, .04); border: 1px solid rgba(232, 228, 218, .28); border-radius: 0; color: var(--bone); font: 600 13px/1 var(--f-label); letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
+.vg-trade-b b { font: 700 17px/1 var(--f-display); letter-spacing: .05em; color: #f6c445; }
+.vg-trade-b:hover { border-color: var(--bone); background: rgba(232, 228, 218, .1); }
+.vg-trade-b:focus-visible { outline: 2px solid #7dffbf; outline-offset: 2px; }
+.vg-trade-b.poor { opacity: .45; cursor: default; }
+.m-pick .seg.vg-starts { display: flex; flex-wrap: wrap; } .m-pick .seg.vg-starts[hidden] { display: none; } .m-pick .seg.vg-starts button { flex: 1 0 30%; }
+.vg-saved { margin: 10px 0 0; font: 500 12px/1.4 var(--f-mono, monospace); letter-spacing: .04em; color: var(--bone-dim, #b9b4a6); }
+@media (max-width: 760px) { #vg-grid.tree { grid-template-columns: 1fr; gap: 18px; } }
+@media (prefers-reduced-motion: reduce) { .vg-life.gain { animation: none; } }
+
+/* The Churchyard's title carries six picker rows and five buttons. Below about a thousand pixels of height it gives
+   up size from the name downwards, so the top of the column (the name) is never pushed off the screen. */
+@media (max-height: 1000px) {
+  body[data-map="vigil"] .m-word { font-size: clamp(40px, min(9.6vw, 12.5vh), 136px) !important; margin-top: 6px !important; margin-bottom: 8px !important; }
+  body[data-map="vigil"] .m-premise { padding-top: 8px !important; font-size: 15px; }
+  body[data-map="vigil"] .m-actions { margin-top: 10px; gap: 8px; }
+  body[data-map="vigil"] .m-pick { margin-top: 10px; gap: 5px 14px; }
+  body[data-map="vigil"] .m-pick .seg button { min-height: 30px; }
+  body[data-map="vigil"] .m-pick-note { min-height: 0; }
+}
+@media (max-height: 760px) {
+  body[data-map="vigil"] .m-word { font-size: clamp(36px, min(9.6vw, 10vh), 136px) !important; }
+  body[data-map="vigil"] .m-actions .btn { min-height: 0; padding-top: 9px; padding-bottom: 9px; }
+  body[data-map="vigil"] .m-pick .seg button { min-height: 27px; }
+  body[data-map="vigil"] .gs-top { display: none; }
+}
+
+/* what is carried of each kind of ammunition, after the guns owned */
+.vg-pools { position: absolute; right: var(--gr); bottom: calc(72px + var(--sab)); display: flex; gap: 6px; justify-content: flex-end; }
+.vg-pool { display: inline-flex; align-items: baseline; gap: 7px; padding: 6px 10px 5px; border: 1px solid rgba(232, 228, 216, .34); background: rgba(9, 11, 13, .62); font: 600 11px/1 var(--f-label); letter-spacing: .16em; color: var(--bone-dim); }
+.vg-pool b { font: 700 15px/1 var(--f-display); color: var(--bone); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.vg-pool.on { background: var(--signal); border-color: var(--signal); color: #0b0d0f; } .vg-pool.on b { color: #0b0d0f; }
+.vg-pool.out b { color: #ff6a55; }
+/* the Churchyard counts rounds on the gun panel and the chips: the small bar keeps the rest */
+body[data-map="vigil"] #gs-ammo, body[data-map="vigil"] #gs-weapon { display: none; }
+body[data-map="vigil"] #gs-gun { bottom: calc(110px + var(--sab, 0px)); }
+
+/* the name on the title: as wide as the pickers under it */
+.m-pick .gs-name { width: 100%; max-width: 240px; min-height: 30px; }
+
+/* ---- what a hit did: numbers off the body; a boss's health across the top ---- */
+.vg-hit { position: absolute; left: 0; top: 0; opacity: 0; will-change: transform, opacity; white-space: nowrap; font: 700 20px/1 var(--f-display); letter-spacing: .03em; color: #f2ede0; text-shadow: 0 1px 0 #000, 0 0 6px rgba(0, 0, 0, .9); font-variant-numeric: tabular-nums; pointer-events: none; }
+.vg-hit.head { color: #ffd24a; font-size: 26px; }
+.vg-hit.big { font-size: 30px; }
+.vg-bosses { position: absolute; left: 50%; top: calc(clamp(96px, 13vh, 150px) + var(--sat, 0px)); transform: translateX(-50%); width: min(720px, 62vw); display: grid; gap: 8px; pointer-events: none; }
+.vg-bossbar { display: grid; gap: 4px; }
+.vg-bossbar span { font: 700 15px/1 var(--f-display); letter-spacing: .28em; text-transform: uppercase; color: #ff7a5c; text-shadow: 0 1px 0 #000, 0 0 10px rgba(0, 0, 0, .8); text-align: center; }
+.vg-bossbar div { height: 14px; background: rgba(8, 9, 10, .72); border: 1px solid rgba(255, 122, 92, .55); box-shadow: 0 0 0 1px #000; }
+.vg-bossbar i { display: block; height: 100%; background: linear-gradient(90deg, #a3271b, #ff5a3c); transition: width .18s ease-out; }
+@media (prefers-reduced-motion: reduce) { .vg-bossbar i { transition: none; } }
+
+/* ---- Settings: blood on or off, and its colour (blood.js) ---- */
+.gs-blood { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.gs-blood-sw { position: relative; width: 34px; height: 30px; padding: 0; border: 1px solid rgba(232, 228, 218, .4); background: var(--c, #8f0d0d); cursor: pointer; overflow: hidden; }
+.gs-blood-sw.rainbow { background: conic-gradient(#e11, #e90, #dd0, #2b2, #19c, #72c, #e11); }
+.gs-blood-sw.custom { display: inline-block; background: var(--c, #d4147a); }
+.gs-blood-sw.custom::after { content: '+'; position: absolute; inset: 0; display: grid; place-items: center; font: 700 16px/1 var(--f-display); color: #fff; text-shadow: 0 0 3px #000, 0 0 3px #000; pointer-events: none; }
+.gs-blood-sw.custom input { position: absolute; inset: -8px; width: calc(100% + 16px); height: calc(100% + 16px); opacity: 0; cursor: pointer; }
+.gs-blood-sw[aria-pressed="true"], .gs-blood-sw.custom.on { outline: 2px solid var(--signal, #9fd8ff); outline-offset: 2px; border-color: #fff; }
+.gs-blood-sw:focus-visible, .gs-blood-sw.custom:focus-within { outline: 2px solid #fff; outline-offset: 2px; }
+.gs-blood-name { margin-left: 4px; font: 600 11px/1 var(--f-label); letter-spacing: .18em; text-transform: uppercase; color: var(--bone-dim, #b9b3a6); }
+.row[data-row="blood-colour"].off .gs-blood { opacity: .45; }
+/* (the colours are as dark as blood is: shown a little brighter here, to be told apart) */
+.gs-blood-sw:not(.rainbow):not(.custom) { filter: brightness(1.7) saturate(1.15); }

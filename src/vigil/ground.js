@@ -33,7 +33,7 @@
       }
     }
     // standing water: low spots in the yard, ruts on the trails
-    const inChurch = (wx, wz) => Math.abs(wx) < 7.2 && Math.abs(wz) < 14.2;
+    const inChurch = (wx, wz) => Math.abs(wx) < V.CH.hw + 1.1 && Math.abs(wz) < 14.2;
     const puddles = [];
     for (let i = 0; i < 150; i++) {
       const wx = (rng() - 0.5) * 2 * (Y + 26), wz = (rng() - 0.5) * 2 * (Y + 26);
@@ -76,6 +76,46 @@
     const tex = new T.CanvasTexture(c); tex.colorSpace = T.SRGBColorSpace; tex.anisotropy = 4;
     return tex;
   }
+
+  /* The engine's rain is drawn for a grey harbor afternoon: thin, short and lit by the sky alone, which at night
+     under pines is nothing. Here it is meant to be seen. heavyRain rewrites the streak shader of one layer: longer
+     and wider streaks, a gain on the sky's light, a term for lightning, and light from the four lamps the camera
+     is nearest to and from the flashlight, so rain shows as it falls through a lantern's glow or the beam. Every
+     anchor is checked: a renamed line in the bundle throws here instead of leaving the rain as it was. */
+  const RAIN = {
+    near: { len: 0.066, w0: 0.0065, w1: 0.0055, px: 1.05, near0: 0.9, near1: 2.8, gain: 7 },
+    // a second, wider box of fewer and heavier streaks: the sheets seen across the yard and against the sky
+    far: { len: 0.1, w0: 0.026, w1: 0.026, px: 1.25, near0: 7, near1: 15, gain: 5, box: [70, 34, 70], vel: [-3.4, -9.1, 1.6] },
+    lamp: 0.2, torch: 0.5, flash: 2.2,
+  };
+  const f = (v) => (Number.isInteger(v) ? v.toFixed(1) : String(v));
+  const LAMPS = `
+uniform float uGain, uFlash, uTorchCos; uniform vec4 uLamp[4]; uniform vec3 uLampC[4]; uniform vec3 uTorchP, uTorchD, uTorchC;
+vec3 rainLamps(vec3 p){
+  vec3 lit = vec3(0.0);
+  for (int i = 0; i < 4; i++) {
+    vec3 d = uLamp[i].xyz - p; float q = dot(d, d);
+    float fall = max(0.0, 1.0 - q * uLamp[i].w);
+    lit += uLampC[i] * (fall * fall / (1.0 + q));
+  }
+  vec3 t = p - uTorchP; float tq = dot(t, t);
+  float cone = smoothstep(uTorchCos, mix(uTorchCos, 1.0, 0.5), dot(t * inversesqrt(max(tq, 1e-4)), uTorchD));
+  lit += uTorchC * (cone * max(0.0, 1.0 - tq / 1296.0) / (1.0 + tq * 0.12));
+  return lit;
+}
+`;
+  function heavyRain(src, o) {
+    let vs = src;
+    const rep = (a, b) => { if (vs.split(a).length !== 2) throw new Error('rain shader anchor: ' + a); vs = vs.replace(a, b); };
+    rep('void main(){', LAMPS + 'void main(){');
+    rep('len = 0.03 * length(vel);', 'len = ' + f(o.len) + ' * length(vel);');
+    rep('float w0 = 0.005 + 0.004 * fract(aSeed.w * 3.7);', 'float w0 = ' + f(o.w0) + ' + ' + f(o.w1) + ' * fract(aSeed.w * 3.7);');
+    rep('float w = max(w0, dist * uPix * 0.75);', 'float w = max(w0, dist * uPix * ' + f(o.px) + ');');
+    rep('smoothstep(0.7, 2.6, dist)', 'smoothstep(' + f(o.near0) + ', ' + f(o.near1) + ', dist)');
+    rep('vCol = uAmb + uSunCol * wPhase(c);', 'vCol = (uAmb + uSunCol * wPhase(c)) * uGain + uFlash * vec3(0.5, 0.62, 0.9) + rainLamps(p);');
+    return vs;
+  }
+  V.heavyRain = heavyRain;                     // for the tests
 
   V.ground = {
     MASK,
@@ -166,7 +206,7 @@ vec2 gRipple(vec2 p, float t){
         return im;
       };
       const rng = kit.rng(31337), Mx = new T.Matrix4(), Q = new T.Quaternion(), E = new T.Euler(), P = new T.Vector3(), Sc = new T.Vector3();
-      const grass = [], ferns = [], inChurch = (x, z) => (Math.abs(x) < 7.6 && Math.abs(z) < 14.6) || (x > -12 && x < -5.5 && z > 6.6 && z < 13.4);
+      const grass = [], ferns = [], CHW = V.CH.hw, inChurch = (x, z) => (Math.abs(x) < CHW + 1.5 && Math.abs(z) < 14.6) || (x > -CHW - 5.9 && x < -CHW + 0.6 && z > 6.6 && z < 13.4);
       const want = g.quality.name === 'low' ? 4000 : g.quality.name === 'medium' ? 8000 : 12000;
       for (let i = 0, tries = 0; grass.length < want && tries < want * 6; tries++, i++) {
         const far = rng() < 0.35, x = (rng() - 0.5) * 2 * (far ? W : Y + 6), z = (rng() - 0.5) * 2 * (far ? W : Y + 6);
@@ -191,7 +231,7 @@ vec2 gRipple(vec2 p, float t){
       plant(tuft(1.3, 0.95, 3), bladeTexture(T, kit.rng(10), true), new T.Color(0.5, 0.62, 0.46), ferns);
 
       // ---- rain (the engine's, pointed at this map's puddles) ----
-      let rain = null;
+      let rain = null, rainU = null, rainFar = null;
       try {
         const R = 256, rd = new Uint8Array(R * R * 4);
         for (let v = 0; v < R; v++) for (let u = 0; u < R; u++) {
@@ -204,7 +244,25 @@ vec2 gRipple(vec2 p, float t){
         // the harbor's quay edge is baked into the splash shader
         rain.splash.material.vertexShader = rain.splash.material.vertexShader.replace('p.x > 29.7 || ', '');
         root.add(rain.rain, rain.splash);
-        rain.setRain(0.7);
+        rain.setRain(1);
+        // ---- this map's rain is meant to be seen (heavyRain above) ----
+        const nm = rain.rain.material, lamp = [0, 1, 2, 3].map(() => new T.Vector4(0, -100, 0, 1)), lampC = [0, 1, 2, 3].map(() => new T.Vector3());
+        rainU = {
+          uGain: { value: RAIN.near.gain }, uFlash: { value: 0 }, uLamp: { value: lamp }, uLampC: { value: lampC },
+          uTorchP: { value: new T.Vector3() }, uTorchD: { value: new T.Vector3(0, 0, -1) }, uTorchC: { value: new T.Vector3() }, uTorchCos: { value: 0.9 },
+        };
+        const src = nm.vertexShader;
+        nm.vertexShader = heavyRain(src, RAIN.near);
+        Object.assign(nm.uniforms, rainU);
+        const fm = new T.ShaderMaterial({
+          uniforms: { ...nm.uniforms, uGain: { value: RAIN.far.gain }, uBox: { value: new T.Vector3(...RAIN.far.box) }, uVel: { value: new T.Vector3(...RAIN.far.vel) } },
+          vertexShader: heavyRain(src, RAIN.far), fragmentShader: nm.fragmentShader,
+          transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, fog: false,
+        });
+        rainFar = new T.Mesh(rain.rain.geometry, fm);
+        rainFar.name = 'rainFar'; rainFar.frustumCulled = false; rainFar.renderOrder = 899; rainFar.matrixAutoUpdate = false;
+        rainFar.castShadow = rainFar.receiveShadow = false;
+        root.add(rainFar);
       } catch (e) { console.error('[vigil] rain failed: ' + ((e && e.stack) || e)); rain = null; }
 
       // ---- lightning: for a moment the moon becomes the bolt ----
@@ -214,7 +272,7 @@ vec2 gRipple(vec2 p, float t){
 
       let t = 0;
       return {
-        root, mesh, mask, maskTexture: maskTex, rain: rain ? rain.rain : null,
+        root, mesh, mask, maskTexture: maskTex, rain: rain ? rain.rain : null, rainFar, rainUniforms: rainU,
         isPuddle(x, z) { return !(Math.abs(x) < 7 && Math.abs(z) < 14) && sample(x, z, 2) > 0.55; },
         wetnessAt(x, z) { return Math.abs(x) < 5.2 && Math.abs(z) < 12 ? 0.12 : sample(x, z, 2) > 0.5 ? 1 : 0.7; },
         isMud(x, z) { return sample(x, z, 0) > 0.5; },
@@ -224,10 +282,26 @@ vec2 gRipple(vec2 p, float t){
         update(dt) {
           t += dt; time.value = t;
           if (rain) { rain.update(dt); rain.rain.material.uniforms.uDrip.value = 0; }
+          if (rainU) {
+            // the lamps and the flashlight the rain falls through
+            const L = V.world && V.world.lights, lamp = rainU.uLamp.value, lampC = rainU.uLampC.value;
+            for (let i = 0; i < 4; i++) {
+              const s = L && L.slots[i] && L.slots[i].light, on = s && s.intensity > 0.01;
+              if (on) { lamp[i].set(s.position.x, s.position.y, s.position.z, 1 / Math.max(1, s.distance * s.distance)); lampC[i].set(s.color.r, s.color.g, s.color.b).multiplyScalar(s.intensity * RAIN.lamp); }
+              else lampC[i].set(0, 0, 0);
+            }
+            const tl = L && L.torch;
+            if (tl && tl.intensity > 0.01) {
+              rainU.uTorchP.value.copy(tl.position); rainU.uTorchD.value.copy(tl.target.position).sub(tl.position).normalize();
+              rainU.uTorchC.value.set(tl.color.r, tl.color.g, tl.color.b).multiplyScalar(tl.intensity * RAIN.torch); rainU.uTorchCos.value = Math.cos(tl.angle);
+            } else rainU.uTorchC.value.set(0, 0, 0);
+            rainU.uFlash.value = 0;
+          }
           if (flash > 0) {
             flash -= dt;
             const q = 1 - Math.max(0, flash) / 0.55, k = (q < 0.1 ? 1 : q < 0.22 ? 0.15 : q < 0.4 ? 0.8 : Math.max(0, 1 - q) * 0.9) * flashP;
             sun.intensity = baseI + k * 16; sun.color.copy(baseC).lerp(white, Math.min(1, k * 1.5));
+            if (rainU) rainU.uFlash.value = k * RAIN.flash;          // for a moment every drop is lit
             if (flash <= 0) { sun.intensity = baseI; sun.color.copy(baseC); }
           }
         },

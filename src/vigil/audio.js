@@ -77,10 +77,55 @@
       const th = buf(sr, 0.28); for (let i = 0; i < th.length; i++) { const t = i / sr; th[i] = Math.sin(TAU * (120 - 220 * t) * t) * Math.exp(-t / 0.07); }
       return mixIn(x, th, 0.9);
     },
+    // A round going into a body: the slap of it, bright enough to be heard under the shot that sent it, and
+    // the wet thump behind.
     flesh_hit(sr, rng, v) {
-      const x = noiseBurst(sr, rng, 0.16, 0.022 + v * 0.006, 'bp', 520 + v * 180, 1.1);
-      const th = buf(sr, 0.16); for (let i = 0; i < th.length; i++) { const t = i / sr; th[i] = Math.sin(TAU * (160 - 400 * t) * t) * Math.exp(-t / 0.03); }
-      return mixIn(mixIn(x, th, 0.8), noiseBurst(sr, rng, 0.12, 0.05, 'lp', 2600, 0.6), 0.25, Math.round(sr * 0.02));
+      const x = noiseBurst(sr, rng, 0.18, 0.024 + v * 0.006, 'bp', 560 + v * 170, 1.1);
+      const th = buf(sr, 0.18); for (let i = 0; i < th.length; i++) { const t = i / sr; th[i] = Math.sin(TAU * (170 - 420 * t) * t) * Math.exp(-t / 0.032); }
+      const slap = noiseBurst(sr, rng, 0.05, 0.006, 'bp', 3400 + v * 500, 1.4);
+      return mixIn(mixIn(mixIn(x, th, 0.8), slap, 0.9), noiseBurst(sr, rng, 0.14, 0.05, 'lp', 2600, 0.6), 0.3, Math.round(sr * 0.02));
+    },
+    // A head shot: the crack of bone, a hollow knock, then what was inside.
+    head_pop(sr, rng, v) {
+      const x = buf(sr, 0.34);
+      mixIn(x, noiseBurst(sr, rng, 0.03, 0.004, 'hp', 2400, 0.8), 1);
+      mixIn(x, partials(sr, 0.12, [[1150 + v * 140, 0.5, 0.012], [2300 + v * 90, 0.3, 0.008]], 0.0008), 0.6);
+      const th = buf(sr, 0.2); for (let i = 0; i < th.length; i++) { const t = i / sr; th[i] = Math.sin(TAU * (95 - 160 * t) * t) * Math.exp(-t / 0.05); }
+      mixIn(x, th, 0.9);
+      const wet = noiseBurst(sr, rng, 0.3, 0.09, 'bp', 820, 0.9);
+      for (let i = 0; i < wet.length; i++) wet[i] *= 0.55 + 0.45 * Math.sin(TAU * 31 * i / sr);
+      return mixIn(x, wet, 0.6, Math.round(sr * 0.025));
+    },
+    // A bark of pain: the breath knocked out of something that no longer needs it. Three, so a burst into
+    // one body does not repeat itself.
+    zombie_pain(sr, rng, v) {
+      const a = voice(sr, rng, { len: 0.38 + rng() * 0.14, f0: 190 + v * 30, f1: 95 + v * 12, rough: 0.8, roughHz: 34 + rng() * 10, breath: 0.4, jit: 3.5, formants: [[640 + v * 50, 4], [1250 + v * 80, 6], [2700, 7]], rel: 0.16, att: 0.012 });
+      return mixIn(a, noiseBurst(sr, rng, 0.2, 0.05, 'bp', 1500, 0.9), 0.3);
+    },
+    // The warden taking a blow: a short grunt forced out by the hit, with the thud of it underneath. Four
+    // of them so two in a row never sound alike.
+    hurt(sr, rng, v) {
+      const len = [0.26, 0.34, 0.22, 0.3][v % 4], f0 = [168, 150, 190, 132][v % 4] * (0.96 + rng() * 0.08);
+      const mouth = [[[640, 5], [1150, 7], [2500, 8]], [[720, 5], [1250, 7], [2600, 8]], [[560, 5], [1500, 7], [2500, 8]], [[500, 5], [950, 7], [2400, 8]]][v % 4];
+      const a = voice(sr, rng, { len, f0, f1: f0 * 0.68, rough: 0.4, roughHz: 34, breath: 0.34, jit: 2.4, formants: mouth, att: 0.012, rel: len * 0.55 });
+      const th = buf(sr, 0.14); for (let i = 0; i < th.length; i++) { const t = i / sr; th[i] = Math.sin(TAU * (105 - 240 * t) * t) * Math.exp(-t / 0.035); }
+      return mixIn(mixIn(a, th, 0.75), noiseBurst(sr, rng, 0.09, 0.02, 'lp', 1400, 0.7), 0.3);
+    },
+    // a heavy one: longer, lower, breaking up, and a breath dragged in after it
+    hurt_hard(sr, rng, v) {
+      const f0 = (v ? 138 : 156) * (0.96 + rng() * 0.08);
+      const a = voice(sr, rng, { len: 0.52, f0: f0 * 1.12, f1: f0 * 0.6, rough: 0.62, roughHz: 30, breath: 0.38, jit: 3.2, formants: v ? [[540, 5], [1000, 7], [2400, 8]] : [[700, 5], [1200, 7], [2600, 8]], att: 0.01, rel: 0.3 });
+      const th = buf(sr, 0.2); for (let i = 0; i < th.length; i++) { const t = i / sr; th[i] = Math.sin(TAU * (90 - 150 * t) * t) * Math.exp(-t / 0.05); }
+      const x = buf(sr, 0.95); mixIn(x, a, 1); mixIn(x, th, 0.95); mixIn(x, noiseBurst(sr, rng, 0.12, 0.03, 'lp', 1100, 0.7), 0.4);
+      const gasp = noiseBurst(sr, rng, 0.36, 0.3, 'bp', 1700, 1.4);
+      for (let i = 0; i < gasp.length; i++) { const u = i / gasp.length; gasp[i] *= Math.sin(Math.PI * u) * 0.9; }
+      return mixIn(x, gasp, 0.34, Math.round(sr * 0.56));
+    },
+    // one beat of a heart heard from inside: two dull thumps
+    heart(sr) {
+      const x = buf(sr, 0.5);
+      for (const [at, f, a] of [[0, 58, 1], [0.17, 50, 0.7]]) for (let i = 0; i < Math.round(sr * 0.3); i++) { const t = i / sr, k = Math.round(sr * at) + i; if (k < x.length) x[k] += a * Math.sin(TAU * (f - 34 * t) * t) * Math.exp(-t / 0.06) * Math.min(1, t / 0.004); }
+      return x;
     },
     // a limb coming away: a wet rip over a dull crack
     limb_tear(sr, rng, v) {
@@ -167,6 +212,44 @@
       for (let i = 0; i < x.length; i++) { const t = i / sr; x[i] *= 0.6 + 0.4 * Math.sin(TAU * 43 * t); }
       return mixIn(x, noiseBurst(sr, rng, 0.2, 0.03, 'lp', 3000, 0.7), 1.2);
     },
+    // a wolf, giving tongue when it has seen someone: a held note that climbs and falls away
+    wolf_howl(sr, rng, v) {
+      const up = voice(sr, rng, { len: 0.7, f0: 300 + v * 30, f1: 520 + v * 40, jit: 0.4, vib: 5.5, rough: 0.12, breath: 0.05, att: 0.12, rel: 0.1, formants: [[620, 5], [1150, 7], [2700, 9]] });
+      const hold = voice(sr, rng, { len: 1.5, f0: 520 + v * 40, f1: 400 + v * 20, jit: 0.4, vib: 5, rough: 0.1, breath: 0.05, att: 0.03, rel: 0.9, formants: [[620, 5], [1150, 7], [2700, 9]] });
+      return mixIn(mixIn(buf(sr, 2.2), up, 0.9), hold, 1, Math.round(sr * 0.62));
+    },
+    // and the short ugly sound it makes before it springs
+    wolf_snarl(sr, rng, v) { return voice(sr, rng, { len: 0.55, f0: 170 + v * 20, f1: 120, jit: 1.6, rough: 0.75, roughHz: 42 + v * 8, breath: 0.35, att: 0.03, rel: 0.2, formants: [[430, 4], [1350, 6], [2700, 8]] }); },
+    // What is not a person. A demon: a hoarse shout that falls. A flying skull: a scream that climbs. A bat: three
+    // or four chirps, each a falling whistle. A spider: a dry hiss that flutters.
+    demon_cry(sr, rng, v) { return voice(sr, rng, { len: 0.9 + rng() * 0.3, f0: 215 + v * 30, f1: 118, jit: 3, rough: 0.8, roughHz: 36 + v * 6, breath: 0.4, att: 0.03, rel: 0.3, trem: 0.25, formants: [[620, 4], [1500, 5], [2900, 7]] }); },
+    skull_shriek(sr, rng, v) { return voice(sr, rng, { len: 0.72 + rng() * 0.2, f0: 520 + v * 90, f1: 1150 + rng() * 150, jit: 5, rough: 0.6, roughHz: 70, breath: 0.5, att: 0.02, rel: 0.18, trem: 0.4, formants: [[1300, 4], [2600, 5], [4200, 6]] }); },
+    bat_squeak(sr, rng, v) {
+      const x = buf(sr, 0.5), n = 3 + (v % 2);
+      for (let k = 0; k < n; k++) {
+        const at = Math.round(sr * (0.02 + k * (0.085 + rng() * 0.03))), len = Math.round(sr * 0.05), f0 = 3600 + rng() * 900 + v * 250;
+        let ph = 0;
+        for (let i = 0; i < len && at + i < x.length; i++) { const u = i / len; ph += (f0 * (1 - 0.35 * u)) / sr; x[at + i] += Math.sin(TAU * ph) * Math.sin(Math.PI * u) * 0.8; }
+      }
+      return x;
+    },
+    spider_hiss(sr, rng, v) {
+      const x = noiseBurst(sr, rng, 0.7, 0.28, 'bp', 5200 + v * 700, 0.9);
+      for (let i = 0; i < x.length; i++) { const t = i / sr; x[i] *= Math.min(1, t / 0.05) * (0.7 + 0.3 * Math.sin(TAU * 38 * t)); }
+      return x;
+    },
+    // something about to go off: a hiss that climbs
+    fuse(sr, rng) {
+      const x = buf(sr, 1.0);
+      for (let i = 0; i < x.length; i++) { const t = i / sr, u = t / 1.0; x[i] = (rng() * 2 - 1) * (0.15 + 0.85 * u * u) * Math.min(1, (1.0 - t) / 0.04) + 0.25 * u * Math.sin(TAU * (500 + 1500 * u * u) * t); }
+      return biquad(x, sr, 'hp', 1800, 0.7);
+    },
+    // fire thrown: a rush of air with a thump under it
+    fire_cast(sr, rng, v) { return mixIn(biquad(noiseBurst(sr, rng, 0.6, 0.2, null), sr, 'bp', 650 + v * 150, 0.6), partials(sr, 0.4, [[82, 0.7, 0.11], [130, 0.35, 0.08]], 0.004), 0.8); },
+    // and fire landing
+    fire_hit(sr, rng, v) { return mixIn(mixIn(noiseBurst(sr, rng, 0.8, 0.2, 'lp', 1100 + v * 200, 0.7), noiseBurst(sr, rng, 0.25, 0.04, 'hp', 2500, 0.7), 0.4), partials(sr, 0.6, [[62, 0.9, 0.2], [98, 0.45, 0.13]], 0.003), 0.9); },
+    // lifeforce gathered: a small bright bell, the second note a fifth above the first
+    life_pick(sr, rng, v) { const f = 1046 * (1 + v * 0.06), x = buf(sr, 0.55); mixIn(x, partials(sr, 0.45, [[f, 0.5, 0.16], [f * 2, 0.22, 0.1], [f * 3.01, 0.1, 0.06]], 0.002)); return mixIn(x, partials(sr, 0.4, [[f * 1.5, 0.42, 0.16], [f * 3, 0.14, 0.08]], 0.002), 0.85, Math.round(sr * 0.055)); },
     heal(sr) { const x = buf(sr, 1.2); [[523, 0], [659, 0.1], [784, 0.2]].forEach(([f, at]) => mixIn(x, partials(sr, 0.9, [[f, 0.4, 0.4], [f * 2, 0.12, 0.25]], 0.03), 0.8, Math.round(sr * at))); return x; },
     shock(sr, rng) {
       const th = buf(sr, 1.4); for (let i = 0; i < th.length; i++) { const t = i / sr; th[i] = Math.sin(TAU * (95 - 55 * Math.min(1, t * 2)) * t) * Math.exp(-t / 0.35); }
@@ -205,17 +288,24 @@
       const world = (gen, n, extra = {}) => ({ gen, n, sr: mid, peak: 0.6, bus: 'world', max: 4, pri: 4, ref: 6, roll: 0.7, ...extra });
       const dry = (gen, n, extra = {}) => ({ gen, n, sr: mid, peak: 0.5, bus: 'dry', max: 2, pri: 6, ...extra });
       Object.assign(S, {
-        groan: world(GEN.groan, 4, { max: 5, pri: 2, ref: 5 }), screech: world(GEN.screech, 2, { pri: 3, ref: 7 }), growl: world(GEN.growl, 2, { pri: 4, ref: 9, peak: 0.75 }),
-        zombie_die: world(GEN.zombie_die, 3, { pri: 4 }), zombie_die_big: world(GEN.zombie_die_big, 1, { pri: 6, ref: 10, peak: 0.85 }),
-        zombie_hit: dry(GEN.zombie_hit, 1, { peak: 0.6, pri: 7 }), flesh_hit: world(GEN.flesh_hit, 3, { sr: hn, max: 5, pri: 5, ref: 5 }),
+        // The dead are heard further off than their size would carry: a groan at thirty metres is still a groan.
+        groan: world(GEN.groan, 4, { max: 6, pri: 2, ref: 8, peak: 0.7 }), screech: world(GEN.screech, 2, { pri: 3, ref: 9 }), growl: world(GEN.growl, 2, { pri: 4, ref: 11, peak: 0.75 }),
+        zombie_pain: world(GEN.zombie_pain, 3, { max: 4, pri: 4, ref: 9, peak: 0.7 }), head_pop: world(GEN.head_pop, 2, { sr: hn, max: 3, pri: 7, ref: 14, roll: 0.5, peak: 0.85 }),
+        zombie_die: world(GEN.zombie_die, 3, { pri: 5, ref: 10, peak: 0.75 }), zombie_die_big: world(GEN.zombie_die_big, 1, { pri: 6, ref: 10, peak: 0.85 }),
+        zombie_hit: dry(GEN.zombie_hit, 1, { peak: 0.6, pri: 7 }), flesh_hit: world(GEN.flesh_hit, 3, { sr: hn, max: 6, pri: 6, ref: 12, roll: 0.55, peak: 0.8 }),
         body_fall: world(GEN.body_fall, 1, { pri: 2, ref: 4 }), spit: world(GEN.spit, 1, { pri: 5 }), acid: world(GEN.acid, 1, { pri: 4 }),
         bell: dry(GEN.bell, 1, { sr: lo, peak: 0.6, pri: 8 }), wave_clear: dry(GEN.wave_clear, 1, { peak: 0.4, pri: 8 }),
         purchase: dry(GEN.purchase, 1, { sr: hn, peak: 0.3, pri: 9 }), deny: dry(GEN.deny, 1, { peak: 0.3, pri: 9 }),
         crystal_hit: world(GEN.crystal_hit, 3, { sr: hn, pri: 6, ref: 9, peak: 0.5 }), crystal_break: dry(GEN.crystal_break, 1, { peak: 0.9, pri: 10 }),
         crystal_hum: { gen: GEN.crystal_hum, n: 1, sr: lo, peak: 0.34, loop: 1, ref: 3, roll: 1.2 },
         vg_shot: world(GEN.vg_shot, 3, { sr: hn, max: 6, pri: 5, ref: 9, roll: 0.55, peak: 0.6 }),
-        flare_pop: world(GEN.flare_pop, 1, { pri: 5 }), heal: dry(GEN.heal, 1, { peak: 0.3, pri: 7 }),
+        flare_pop: world(GEN.flare_pop, 1, { pri: 5 }), heal: dry(GEN.heal, 1, { peak: 0.3, pri: 7 }), life_pick: dry(GEN.life_pick, 2, { peak: 0.26, pri: 5, max: 3 }),
+        wolf_howl: world(GEN.wolf_howl, 2, { ref: 12, roll: 0.5, peak: 0.7, max: 2, pri: 6 }), wolf_snarl: world(GEN.wolf_snarl, 2, { ref: 8, peak: 0.6, max: 3 }),
+        fuse: world(GEN.fuse, 1, { ref: 8, peak: 0.55, max: 3, pri: 6 }), fire_cast: world(GEN.fire_cast, 2, { ref: 10, peak: 0.6, max: 4 }), fire_hit: world(GEN.fire_hit, 2, { ref: 11, roll: 0.6, peak: 0.75, max: 4, pri: 6 }),
+        demon_cry: world(GEN.demon_cry, 2, { ref: 12, roll: 0.55, peak: 0.7, max: 3, pri: 5 }), skull_shriek: world(GEN.skull_shriek, 2, { ref: 11, roll: 0.6, peak: 0.6, max: 3, pri: 5 }),
+        bat_squeak: world(GEN.bat_squeak, 2, { ref: 9, peak: 0.45, max: 3, pri: 3 }), spider_hiss: world(GEN.spider_hiss, 2, { ref: 8, peak: 0.55, max: 3, pri: 4 }),
         shock: dry(GEN.shock, 1, { peak: 0.8, pri: 9 }), aegis: dry(GEN.aegis, 1, { sr: lo, peak: 0.4, pri: 8 }),
+        hurt: dry(GEN.hurt, 4, { peak: 0.5, pri: 8, max: 2 }), hurt_hard: dry(GEN.hurt_hard, 2, { peak: 0.6, pri: 9, max: 1 }), heart: dry(GEN.heart, 1, { sr: lo, peak: 0.5, pri: 5, max: 1 }),
         limb_tear: world(GEN.limb_tear, 3, { sr: hn, pri: 6, ref: 6, peak: 0.7 }), gib_land: world(GEN.gib_land, 2, { max: 3, pri: 2, ref: 4, peak: 0.45 }),
         stone_break: world(GEN.stone_break, 3, { sr: hn, pri: 6, ref: 9, peak: 0.85 }), stone_hit: world(GEN.stone_hit, 3, { sr: hn, max: 5, pri: 2, ref: 5, peak: 0.4 }),
         wood_break: world(GEN.wood_break, 3, { sr: hn, pri: 6, ref: 8, peak: 0.8 }), wood_hit: world(GEN.wood_hit, 3, { sr: hn, max: 5, pri: 2, ref: 5, peak: 0.4 }),
@@ -224,7 +314,14 @@
       const swap = (name, gen, n) => { if (S[name]) { S[name].gen = gen; if (n) S[name].n = n; } };
       swap('foghorn', GEN.wolf, 1); swap('gull_cry', GEN.owl, 2); swap('halyard', GEN.creak, 2); swap('container_bang', GEN.branch, 1); swap('sea', GEN.forest, 1);
     },
-    install(g) { this.g = g; },
+    install(g) {
+      this.g = g;
+      // The engine hangs the hum of one of its own machines on every enemy in the list, the nearest six: a drone's
+      // rotor on anything that is not a hound. The dead are not machines, and on the title, where they wander, it
+      // was a buzzing and a swooshing from nowhere. Asking for one of those loops by hand tells the engine this
+      // map places its own, and it stops giving them out.
+      try { const h = g.audio && g.audio.loop && g.audio.loop('gull_rotor', { gain: 0 }); if (h && h.stop) h.stop(0); } catch (e) { /* no audio */ }
+    },
     play(name, opts) {
       const a = this.g && this.g.audio;
       if (!a || !a.play) return;
